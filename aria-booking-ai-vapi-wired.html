@@ -281,6 +281,7 @@
     font-size: 0.82rem;
     min-width: 240px;
     justify-content: center;
+    transition: opacity 0.3s ease;
   }
   .hint-dot {
     width: 8px;
@@ -291,10 +292,124 @@
     flex-shrink: 0;
   }
 
+  /* Pulse the hint dot while ARIA is speaking */
+  body.speaking .hint-dot {
+    animation: dot-speaking 0.7s ease-in-out infinite alternate;
+  }
+  @keyframes dot-speaking {
+    from { transform: scale(1);    box-shadow: 0 0 18px rgba(143,255,87,0.9); }
+    to   { transform: scale(1.55); box-shadow: 0 0 28px rgba(143,255,87,1);   }
+  }
+
   body.connecting .status::before                                       { content: "Connecting ARIA…"; }
   body.listening  .status::before                                       { content: "ARIA is listening…"; }
   body.speaking   .status::before                                       { content: "ARIA is speaking…"; }
   body:not(.connecting):not(.listening):not(.speaking) .status::before  { content: "Tap the orb and ARIA will help you book."; }
+
+  /* ══════════════════════════════════════════════════════
+     LIVE TRANSCRIPT AREA
+  ══════════════════════════════════════════════════════ */
+  .transcript-area {
+    width: 100%;
+    max-width: 500px;
+    max-height: 0;
+    overflow: hidden;
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 0;
+    transition:
+      max-height 0.45s cubic-bezier(.22,.8,.22,1),
+      opacity    0.35s ease,
+      margin-top 0.35s ease;
+    pointer-events: none;
+  }
+
+  body.listening  .transcript-area,
+  body.speaking   .transcript-area {
+    max-height: 220px;
+    opacity: 1;
+    margin-top: 18px;
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+
+  /* Custom scrollbar to match design */
+  .transcript-area::-webkit-scrollbar { width: 3px; }
+  .transcript-area::-webkit-scrollbar-track { background: transparent; }
+  .transcript-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
+
+  @keyframes msg-appear {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);    }
+  }
+
+  .chat-msg {
+    max-width: 82%;
+    padding: 9px 14px;
+    border-radius: 18px;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    animation: msg-appear 0.22s cubic-bezier(.22,.8,.22,1) both;
+    word-break: break-word;
+  }
+
+  /* ARIA messages — left side */
+  .chat-msg.aria {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.11);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.93);
+    border-bottom-left-radius: 4px;
+    text-align: left;
+  }
+
+  /* User messages — right side */
+  .chat-msg.user {
+    align-self: flex-end;
+    background: rgba(138, 244, 238, 0.14);
+    border: 1px solid rgba(138, 244, 238, 0.24);
+    color: rgba(255, 255, 255, 0.88);
+    border-bottom-right-radius: 4px;
+    text-align: right;
+  }
+
+  /* Live partial (user still speaking) */
+  .chat-msg.partial {
+    opacity: 0.52;
+    animation: none;
+    font-style: italic;
+  }
+
+  /* ARIA thinking indicator */
+  .aria-thinking {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 11px 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    animation: msg-appear 0.22s cubic-bezier(.22,.8,.22,1) both;
+  }
+
+  .aria-thinking span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(138, 244, 238, 0.75);
+    animation: thinking-dot 1.1s ease-in-out infinite;
+  }
+  .aria-thinking span:nth-child(2) { animation-delay: 0.18s; }
+  .aria-thinking span:nth-child(3) { animation-delay: 0.36s; }
+
+  @keyframes thinking-dot {
+    0%, 80%, 100% { opacity: 0.28; transform: scale(0.75); }
+    40%           { opacity: 1;    transform: scale(1.15); }
+  }
 
   @media (max-width: 520px) {
     .screen { min-height: 100svh; padding: 34px 18px; }
@@ -303,6 +418,8 @@
     .subhead { margin-bottom: 34px; }
     .brand-chip { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .hint { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    body.listening .transcript-area,
+    body.speaking  .transcript-area { max-height: 160px; }
   }
 
   @media (hover: none), (pointer: coarse) {
@@ -357,6 +474,9 @@
         <span class="hint-dot" aria-hidden="true"></span>
         <span id="hintText">Click the orb to activate mic permission and start your guided demo</span>
       </div>
+
+      <!-- Live transcript chat area — appears only during active calls -->
+      <div class="transcript-area" id="transcriptArea" aria-live="polite" aria-label="Live conversation transcript"></div>
     </section>
   </main>
 
@@ -374,30 +494,79 @@
   const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby2KjP5rEWriFihNp1QM1G1OzmATLoQoRfP53rV-36MyWQzh9v1mqVjmfNaIXhhDtgSrw/exec';
 
   /* ═══════════════════════════════════════════════════════════════
+     PERFORMANCE OVERRIDES
+     Applied on top of the dashboard assistant to reduce latency.
+     ─────────────────────────────────────────────────────────────
+     startSpeakingPlan.waitSeconds  — how long after the user stops
+       talking before ARIA begins responding. 0.1 s = near-instant.
+     smartEndpointingEnabled        — AI-based turn detection so ARIA
+       doesn't cut off mid-sentence but also doesn't wait too long.
+     backgroundDenoisingEnabled     — cleaner audio = faster accurate
+       transcription.
+  ═══════════════════════════════════════════════════════════════ */
+  const ASSISTANT_OVERRIDES = {
+    startSpeakingPlan: {
+      waitSeconds: 0.1,
+      smartEndpointingEnabled: true
+    },
+    stopSpeakingPlan: {
+      numWords: 2,
+      voiceSeconds: 0.2,
+      backoffSeconds: 0.5
+    },
+    backgroundDenoisingEnabled: true
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
      INLINE ASSISTANT FALLBACK
      Only used if ASSISTANT_ID is blank. When ASSISTANT_ID is set,
      all voice/prompt settings come from the Vapi dashboard instead.
+
+     IMPORTANT: If you ARE using the inline assistant, the voice
+     provider is set to '11labs' for fastest TTS response times.
+     PlayHT adds 300-800 ms extra latency vs 11labs/deepgram.
   ═══════════════════════════════════════════════════════════════ */
   const INLINE_ASSISTANT = {
-    name: 'ARIA Booking Specialist',
-    transcriber: { provider: 'openai', model: 'gpt-4o-transcribe', language: 'en' },
+    name: 'ARIA',
+    transcriber: {
+      provider: 'deepgram',
+      model: 'nova-3',
+      language: 'en-US',
+      endpointing: 200      /* ms of silence before treating utterance as done */
+    },
     model: {
       provider: 'openai',
       model: 'gpt-4o-mini',
-      temperature: 0.35,
+      temperature: 0.3,
+      maxTokens: 120,       /* Short replies = faster TTS + more conversational */
       messages: [{
         role: 'system',
-        content: `You are ARIA, a warm AI booking specialist for Nexus Luma.
-Your goal is to help the visitor understand how Aria qualifies leads and guide them toward a $197 strategy call when there is a fit.
-Keep replies short, human, and confident.
-Collect these details naturally, not like a quiz: name, business name, location, email, preferred time or availability, what they want help with, and what is costing them leads right now.
-Confirm the details back to the visitor and explain that the next step is a $197 strategy call where Nexus Luma maps their brand, booking flow, and recommended system.
-When you have enough info and the visitor is ready, say this exact phrase: "We are all set."
-Do not say that phrase until the lead details are collected and the next step is confirmed.`
+        content: `You are ARIA — a sharp, warm AI booking specialist for Nexus Luma. You talk like a real person: natural, confident, never robotic.
+
+RULES:
+- Keep every reply to 1–2 short sentences MAX. If you need more, break it into turns.
+- Never list questions. Ask ONE thing at a time, then wait.
+- Acknowledge what the person said before moving on — it shows you're listening.
+- Use contractions (you're, I'll, that's) and casual phrases (sounds good, got it, perfect).
+- Never say "Great!" or "Absolutely!" — vary your acknowledgments.
+
+YOUR GOAL:
+Naturally collect: first name, business name, city, email, and when they're free. Then explain the $197 strategy call — Nexus Luma maps their brand, booking flow, and AI system in one session.
+
+When all details are confirmed and they're ready to book, say exactly: "We are all set." — not before.
+
+START: Greet them warmly and ask their name. Nothing else yet.`
       }]
     },
-    voice: { provider: 'playht', voiceId: 'jennifer' },
-    firstMessage: "Hey, I'm ARIA. I'll show you how I qualify leads and guide them toward booking. First, what's your name?"
+    /* 11labs 'Rachel' — fast, natural, warm voice */
+    voice: {
+      provider: '11labs',
+      voiceId: '21m00Tcm4TlvDq8ikWAM',  /* Rachel */
+      stability: 0.5,
+      similarityBoost: 0.8,
+      optimizeStreamingLatency: 4       /* 0-4 — highest latency optimization */
+    },
+    firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
 
   /* ═══════════════════════════════════════════════════════════════
@@ -426,9 +595,15 @@ Do not say that phrase until the lead details are collected and the next step is
   let connectingTimer      = null;
   let backendSyncTimer     = null;
   let assistantContextSent = false;
-  const statusEl           = document.querySelector('.status');
-  const hintTextEl         = document.getElementById('hintText');
-  const orbBtn             = document.getElementById('orbBtn');
+
+  const statusEl      = document.querySelector('.status');
+  const hintTextEl    = document.getElementById('hintText');
+  const orbBtn        = document.getElementById('orbBtn');
+  const transcriptEl  = document.getElementById('transcriptArea');
+
+  /* Transcript UI state */
+  let partialMsgEl    = null;   /* The live "user is typing" bubble */
+  let thinkingEl      = null;   /* The "ARIA is thinking" dots */
 
   /* ═══════════════════════════════════════════════════════════════
      UI HELPERS
@@ -437,6 +612,15 @@ Do not say that phrase until the lead details are collected and the next step is
     document.body.classList.remove('connecting', 'listening', 'speaking', 'vol-med', 'vol-high');
     if (state) document.body.classList.add(state);
     if (orbBtn) orbBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+    /* Clear transcript when call ends */
+    if (!state && transcriptEl) {
+      setTimeout(() => {
+        transcriptEl.innerHTML = '';
+        partialMsgEl = null;
+        thinkingEl   = null;
+      }, 500);
+    }
   }
 
   function setHintMessage(msg) {
@@ -447,6 +631,84 @@ Do not say that phrase until the lead details are collected and the next step is
     if (!error) return 'Unknown error.';
     if (typeof error === 'string') return error;
     return error.message || error.name || 'Unknown error.';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     TRANSCRIPT UI
+  ═══════════════════════════════════════════════════════════════ */
+
+  /**
+   * Auto-scroll the transcript to the latest message.
+   */
+  function scrollTranscript() {
+    if (transcriptEl) {
+      requestAnimationFrame(() => {
+        transcriptEl.scrollTop = transcriptEl.scrollHeight;
+      });
+    }
+  }
+
+  /**
+   * Append a finalised chat bubble to the transcript.
+   * @param {'aria'|'user'} role
+   * @param {string} text
+   */
+  function appendChatMessage(role, text) {
+    if (!transcriptEl || !text || !text.trim()) return;
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.textContent = text.trim();
+    transcriptEl.appendChild(div);
+    scrollTranscript();
+  }
+
+  /**
+   * Update the live partial transcript bubble (user still speaking).
+   * Creates the bubble on first call, reuses it thereafter.
+   * @param {string} text
+   */
+  function updatePartialTranscript(text) {
+    if (!transcriptEl) return;
+    if (!partialMsgEl) {
+      partialMsgEl = document.createElement('div');
+      partialMsgEl.className = 'chat-msg user partial';
+      transcriptEl.appendChild(partialMsgEl);
+    }
+    partialMsgEl.textContent = text;
+    scrollTranscript();
+  }
+
+  /**
+   * Promote the partial bubble to a final message (remove italic/opacity).
+   */
+  function finalizePartialTranscript() {
+    if (partialMsgEl) {
+      partialMsgEl.classList.remove('partial');
+      partialMsgEl = null;
+    }
+  }
+
+  /**
+   * Show the three-dot "ARIA is thinking" indicator.
+   */
+  function showThinking() {
+    removeThinking();
+    if (!transcriptEl) return;
+    thinkingEl = document.createElement('div');
+    thinkingEl.className = 'aria-thinking';
+    thinkingEl.innerHTML = '<span></span><span></span><span></span>';
+    transcriptEl.appendChild(thinkingEl);
+    scrollTranscript();
+  }
+
+  /**
+   * Remove the thinking indicator.
+   */
+  function removeThinking() {
+    if (thinkingEl) {
+      thinkingEl.remove();
+      thinkingEl = null;
+    }
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -511,7 +773,6 @@ Do not say that phrase until the lead details are collected and the next step is
       const blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
       const sent = navigator.sendBeacon(ARIA_SHEETS_WEBHOOK_URL, blob);
       if (!sent) {
-        /* Beacon queue full — fall through to fetch */
         console.warn('ARIA: sendBeacon failed, falling back to fetch');
       } else {
         return;
@@ -533,10 +794,10 @@ Do not say that phrase until the lead details are collected and the next step is
     }
   }
 
+  /* Debounce rapid transcript events — fire once per ~300 ms (was 600 ms) */
   function scheduleSheetSync(reason) {
     clearTimeout(backendSyncTimer);
-    /* Debounce rapid transcript events — fire once per ~600 ms */
-    backendSyncTimer = setTimeout(() => { syncToSheets(reason); }, 600);
+    backendSyncTimer = setTimeout(() => { syncToSheets(reason); }, 300);
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -554,7 +815,7 @@ Do not say that phrase until the lead details are collected and the next step is
     if (answers.pain)    parts.push('Lead challenge: '   + answers.pain);
     if (answers.spend)   parts.push('Lead spend: '       + answers.spend);
     if (!parts.length)   return '';
-    return 'Context captured before the voice call. Use it naturally and do not ask the user to repeat it unless needed: ' + parts.join(' | ');
+    return 'Context captured before the voice call. Use it naturally — do not ask the user to repeat info you already know: ' + parts.join(' | ');
   }
 
   function sendAssistantContextIfAvailable() {
@@ -601,11 +862,6 @@ Do not say that phrase until the lead details are collected and the next step is
 
   /* ═══════════════════════════════════════════════════════════════
      ORB CLICK — MIC PERMISSION + CALL START
-     1. User taps orb
-     2. toggleCall() → startCall()
-     3. startCall() calls ensureVapiInstance() (creates Vapi once)
-     4. vapi.start() triggers browser mic permission prompt automatically
-     5. On grant → call-start event fires → setState('listening')
   ═══════════════════════════════════════════════════════════════ */
   async function toggleCall(event) {
     if (event) event.stopPropagation();
@@ -615,7 +871,7 @@ Do not say that phrase until the lead details are collected and the next step is
   async function startCall() {
     if (!VAPI_KEY) {
       setHintMessage('VAPI_KEY is not configured. Contact support.');
-      console.error('ARIA: VAPI_KEY is empty. Set it in the script config block.');
+      console.error('ARIA: VAPI_KEY is empty.');
       return;
     }
 
@@ -624,27 +880,29 @@ Do not say that phrase until the lead details are collected and the next step is
       setHintMessage('Allow microphone access when your browser asks…');
 
       /*
-        Connection timeout guard — if call-start hasn't fired within 12 s,
-        bail out gracefully so the user isn't stuck on a spinning orb.
+        Connection timeout guard — bail after 10 s so user isn't stuck.
       */
       connectingTimer = setTimeout(() => {
         if (!active) {
-          console.warn('ARIA: connection timed out after 12 s');
+          console.warn('ARIA: connection timed out after 10 s');
           setState('');
           setHintMessage('Connection timed out — tap the orb to try again');
           if (vapi) { try { vapi.stop(); } catch (_) {} }
         }
-      }, 12000);
+      }, 10000);
 
       await ensureVapiInstance();
 
       /*
-        ASSISTANT_ID (dashboard) takes priority.
-        Falls back to INLINE_ASSISTANT object if ASSISTANT_ID is blank.
-        Using a dashboard assistant is recommended — lets you update
-        the prompt and voice without redeploying this HTML file.
+        ASSISTANT_ID (dashboard) takes priority and receives ASSISTANT_OVERRIDES
+        to reduce latency without touching the dashboard config.
+        Falls back to INLINE_ASSISTANT if ASSISTANT_ID is blank.
       */
-      await vapi.start(ASSISTANT_ID || INLINE_ASSISTANT);
+      if (ASSISTANT_ID) {
+        await vapi.start(ASSISTANT_ID, ASSISTANT_OVERRIDES);
+      } else {
+        await vapi.start(INLINE_ASSISTANT);
+      }
 
     } catch (error) {
       clearTimeout(connectingTimer);
@@ -673,7 +931,7 @@ Do not say that phrase until the lead details are collected and the next step is
       active    = true;
       finishing = false;
       setState('listening');
-      setHintMessage('Speak naturally and ARIA will guide the booking');
+      setHintMessage('Speak naturally — ARIA will guide you');
       sendAssistantContextIfAvailable();
       syncToSheets('call-start');
     });
@@ -681,6 +939,8 @@ Do not say that phrase until the lead details are collected and the next step is
     vapi.on('call-end', () => {
       clearTimeout(connectingTimer);
       active = false;
+      removeThinking();
+      finalizePartialTranscript();
       setState('');
       setHintMessage('Click the orb to activate mic permission and start your guided demo');
       saveLeadSnapshot();
@@ -691,8 +951,15 @@ Do not say that phrase until the lead details are collected and the next step is
       if (finishing) goToNextStep();
     });
 
-    vapi.on('speech-start', () => { setState('speaking'); });
-    vapi.on('speech-end',   () => { setState('listening'); });
+    /* speech-start / speech-end refer to ARIA's TTS output */
+    vapi.on('speech-start', () => {
+      removeThinking();   /* ARIA started talking — hide the dots */
+      setState('speaking');
+    });
+
+    vapi.on('speech-end', () => {
+      setState('listening');
+    });
 
     vapi.on('volume-level', (vol) => {
       document.body.classList.remove('vol-med', 'vol-high');
@@ -703,9 +970,9 @@ Do not say that phrase until the lead details are collected and the next step is
     /*
       MESSAGE ROUTING
       ─────────────────────────────────────────────────────────────
-      transcript + transcriptType 'partial' → live preview ONLY — never stored
-      transcript + transcriptType 'final'   → stored + field detection + sheet sync ✓
-      assistant / bot type                  → treated as assistant final turn ✓
+      transcript + transcriptType 'partial' → live preview bubble
+      transcript + transcriptType 'final'   → finalise bubble + detection + sync
+      assistant / bot type                  → ARIA reply bubble + detection
     */
     vapi.on('message', (message) => {
       if (!message) return;
@@ -713,16 +980,39 @@ Do not say that phrase until the lead details are collected and the next step is
       const msgType        = message.type || '';
       const transcriptType = message.transcriptType || message.transcript_type || '';
 
+      /* ── User transcript ── */
       if (msgType === 'transcript') {
-        if (transcriptType === 'final') {
-          handleFinalTranscript(message);
+
+        if (transcriptType === 'partial') {
+          /* Show what the user is saying in real-time */
+          const text = extractMessageText(message);
+          if (text) updatePartialTranscript(text);
+          return;
         }
-        /* Skip partials — mid-sentence noise only */
-        return;
+
+        if (transcriptType === 'final') {
+          const text = extractMessageText(message);
+          if (text) {
+            finalizePartialTranscript();           /* Lock the partial bubble */
+            /* Replace the partial with a clean final bubble */
+            const last = transcriptEl && transcriptEl.lastElementChild;
+            if (last && last.classList.contains('user') && !last.classList.contains('partial')) {
+              last.textContent = text.trim();      /* Update in-place */
+            } else {
+              appendChatMessage('user', text);
+            }
+            showThinking();                        /* Show thinking dots while ARIA processes */
+          }
+          handleFinalTranscript(message);
+          return;
+        }
       }
 
-      /* Some Vapi SDK versions surface the assistant reply as type:'assistant' */
+      /* ── ARIA / assistant reply ── */
       if (msgType === 'assistant' || msgType === 'bot') {
+        removeThinking();
+        const text = extractMessageText(message);
+        if (text) appendChatMessage('aria', text);
         handleFinalTranscript(message);
       }
     });
@@ -731,6 +1021,7 @@ Do not say that phrase until the lead details are collected and the next step is
       clearTimeout(connectingTimer);
       console.error('Vapi error:', error);
       active = false;
+      removeThinking();
       setState('');
       setHintMessage('Something went wrong — check the browser console');
       syncToSheets('call-error');
@@ -759,8 +1050,7 @@ Do not say that phrase until the lead details are collected and the next step is
     scheduleSheetSync('transcript-update');
 
     /*
-      Only check the "we are all set" phrase on ARIA's turns.
-      A user saying it for any other reason won't accidentally end the call.
+      Only trigger completion on ARIA's turns.
     */
     if (role === 'assistant' && /\bwe are all set\b/i.test(text)) {
       finishing = true;
@@ -786,8 +1076,6 @@ Do not say that phrase until the lead details are collected and the next step is
 
   /* ═══════════════════════════════════════════════════════════════
      LEAD FIELD DETECTION
-     Fields tracked: name, business, location, email, phone,
-     appointment time, availability, booking intent
   ═══════════════════════════════════════════════════════════════ */
   function detectLeadFields(text, role) {
 
@@ -795,7 +1083,7 @@ Do not say that phrase until the lead details are collected and the next step is
     const email = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
     if (email) bookingLead.email = email[0];
 
-    /* PHONE — 10-digit US and international variants */
+    /* PHONE */
     const phone = text.match(
       /(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/
     );
@@ -809,7 +1097,6 @@ Do not say that phrase until the lead details are collected and the next step is
       if (nameWithPrefix) {
         bookingLead.name = cleanValue(nameWithPrefix[1]);
       } else if (role === 'user') {
-        /* Bare first [last] name on short user turns (< 40 chars) */
         const bareNamePattern = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
         if (bareNamePattern && text.length < 40) {
           bookingLead.name = cleanValue(bareNamePattern[1]);
@@ -841,7 +1128,7 @@ Do not say that phrase until the lead details are collected and the next step is
       if (timePattern) bookingLead.appointmentTime = cleanValue(timePattern[1]);
     }
 
-    /* AVAILABILITY — broader statements */
+    /* AVAILABILITY */
     if (!bookingLead.availability) {
       const availPattern = text.match(
         /\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i
@@ -885,14 +1172,12 @@ Do not say that phrase until the lead details are collected and the next step is
       document.body.classList.add('page-ready');
     }));
 
-    /* Warn early if the Vapi SDK was blocked by an ad-blocker or CSP */
     setTimeout(() => {
-      if (typeof Vapi !== 'function') {
+      if (!VapiConstructor) {
         console.error(
-          'ARIA WARNING: Vapi SDK did not load from CDN. ' +
+          'ARIA WARNING: Vapi SDK did not load. ' +
           'Check for network errors, ad-blockers, or CSP headers.'
         );
-        setHintMessage('Voice SDK blocked — try disabling extensions');
       }
     }, 3000);
 
