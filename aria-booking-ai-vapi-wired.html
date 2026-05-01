@@ -490,49 +490,47 @@
   const NEXT_STEP_URL = 'aria-strategy-apple.html';
   const VAPI_SDK_URL = 'https://esm.sh/@vapi-ai/web@2';
 
-  /* Google Apps Script Web App endpoint for ARIA call sync */
-  const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby2KjP5rEWriFihNp1QM1G1OzmATLoQoRfP53rV-36MyWQzh9v1mqVjmfNaIXhhDtgSrw/exec';
+  /* Google Apps Script Web App endpoint — Sheet ID: 1wX6MoaHPzz5-sDpe_X0INsX4-d-BgqrwjpF5vibuJD8 */
+  const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
 
   /* ═══════════════════════════════════════════════════════════════
      PERFORMANCE OVERRIDES
      Applied on top of the dashboard assistant to reduce latency.
      ─────────────────────────────────────────────────────────────
-     AssemblyAI Universal-Streaming improves recognition and has
-     built-in end-of-turn detection, so ARIA hears cleaner user turns.
-     waitSeconds trims the final delay after the model and voice are ready.
+     AssemblyAI Universal-Streaming has built-in end-of-turn detection
+     and is confirmed compatible with this Vapi key.
+     Confidence threshold raised to 0.5 for cleaner turn boundaries.
      Smart denoising filters ambient noise before transcription.
   ═══════════════════════════════════════════════════════════════ */
   const ASSISTANT_OVERRIDES = {
     transcriber: {
-      provider: 'assembly-ai',
-      language: 'en',
-      endOfTurnConfidenceThreshold: 0.4,
-      minEndOfTurnSilenceWhenConfident: 300,
-      maxTurnSilence: 1000
+      provider:                         'assembly-ai',
+      language:                         'en',
+      endOfTurnConfidenceThreshold:     0.5,   /* higher = cleaner turn cuts */
+      minEndOfTurnSilenceWhenConfident: 400,   /* ms — let user finish thought */
+      maxTurnSilence:                   1200   /* ms — generous pause buffer  */
     },
     startSpeakingPlan: {
-      waitSeconds: 0.2,
+      waitSeconds: 0.3,
       transcriptionEndpointingPlan: {
-        onPunctuationSeconds: 0.1,
-        onNoPunctuationSeconds: 0.8,
-        onNumberSeconds: 0.8
+        onPunctuationSeconds:   0.15,
+        onNoPunctuationSeconds: 1.0,
+        onNumberSeconds:        1.0
       }
     },
     stopSpeakingPlan: {
-      numWords: 0,
-      voiceSeconds: 0.2,
-      backoffSeconds: 0.35
+      numWords:       0,
+      voiceSeconds:   0.2,
+      backoffSeconds: 0.4
     },
     backgroundSpeechDenoisingPlan: {
-      smartDenoisingPlan: {
-        enabled: true
-      }
+      smartDenoisingPlan: { enabled: true }
     },
     model: {
-      provider: 'openai',
-      model: 'gpt-4o-mini',
-      temperature: 0.25,
-      maxTokens: 90
+      provider:    'openai',
+      model:       'gpt-4o-mini',
+      temperature: 0.2,
+      maxTokens:   160   /* enough for ARIA to spell out a full email */
     }
   };
 
@@ -548,47 +546,61 @@
   const INLINE_ASSISTANT = {
     name: 'ARIA',
     transcriber: {
-      provider: 'assembly-ai',
-      language: 'en',
-      endOfTurnConfidenceThreshold: 0.4,
-      minEndOfTurnSilenceWhenConfident: 300,
-      maxTurnSilence: 1000
+      provider:                         'assembly-ai',
+      language:                         'en',
+      endOfTurnConfidenceThreshold:     0.5,
+      minEndOfTurnSilenceWhenConfident: 400,
+      maxTurnSilence:                   1200
     },
     model: {
-      provider: 'openai',
-      model: 'gpt-4o-mini',
-      temperature: 0.3,
-      maxTokens: 90,        /* Short replies = faster TTS + more conversational */
+      provider:    'openai',
+      model:       'gpt-4o-mini',
+      temperature: 0.2,
+      maxTokens:   160,
       messages: [{
         role: 'system',
         content: `You are ARIA — a sharp, warm AI booking specialist for Nexus Luma. You talk like a real person: natural, confident, never robotic.
 
-RULES:
+CONVERSATION RULES:
 - Keep every reply to 1–2 short sentences MAX. If you need more, break it into turns.
 - Never list questions. Ask ONE thing at a time, then wait.
 - Acknowledge what the person said before moving on — it shows you're listening.
 - Use contractions (you're, I'll, that's) and casual phrases (sounds good, got it, perfect).
 - Never say "Great!" or "Absolutely!" — vary your acknowledgments.
 
-YOUR GOAL:
-Naturally collect: first name, business name, city, email, and when they're free. Then explain the $197 strategy call — Nexus Luma maps their brand, booking flow, and AI system in one session.
+ACCURACY & CONFIRMATION RULES — follow these every time without exception:
+- NAME: After the person gives their name, always repeat it back immediately. Example: "Nice to meet you, Sarah — did I get that right?" If they correct you, apologise briefly and confirm the corrected version.
+- BUSINESS NAME: After they say their business name, read it back exactly. Example: "Got it — so the business is Blue Ridge Media, correct?"
+- EMAIL: This is critical. After they give their email, spell it out letter by letter including the domain. Example: "Let me read that back — S-A-R-A-H at B-L-U-E-R-I-D-G-E dot com — is every letter right?" Wait for explicit confirmation before moving on.
+- LOCATION: Confirm city and state together. Example: "And you're based in Austin, Texas — is that right?"
+- AVAILABILITY: Confirm the day and time clearly. Example: "So Tuesday at 2 PM works for you — perfect, I've got that."
+- If anything sounds unclear or you aren't 100% sure of a spelling, ask them to spell it out. Example: "Could you spell that for me so I make sure I get it exactly right?"
+- Never guess, assume, or move on until the person verbally confirms each detail is correct.
 
-When all details are confirmed and they're ready to book, say exactly: "We are all set." — not before.
+YOUR GOAL:
+Naturally collect these required details before ending: first name, business name, city/location, email, and when they're free for a strategy call. Then explain the $197 strategy call — Nexus Luma maps their brand, booking flow, and AI system in one session.
+
+COMPLETION RULE:
+- Do not finish early.
+- Do not say the completion phrase until you have confirmed all required details: name, business name, location, email, and availability.
+- Once everything is collected and confirmed, briefly read all details back as a summary.
+- Then say exactly: "We are all set."
+- After saying that exact phrase, stop talking and let the page move to the next step.
 
 START: Greet them warmly and ask their name. Nothing else yet.`
       }]
     },
     /* 11labs 'Rachel' — fast, natural, warm voice */
     voice: {
-      provider: '11labs',
-      voiceId: '21m00Tcm4TlvDq8ikWAM',  /* Rachel */
-      stability: 0.5,
-      similarityBoost: 0.8,
+      provider:                 '11labs',
+      voiceId:                  '21m00Tcm4TlvDq8ikWAM',  /* Rachel */
+      stability:                0.5,
+      similarityBoost:          0.8,
       optimizeStreamingLatency: 4       /* 0-4 — highest latency optimization */
     },
-    startSpeakingPlan: ASSISTANT_OVERRIDES.startSpeakingPlan,
-    stopSpeakingPlan: ASSISTANT_OVERRIDES.stopSpeakingPlan,
-    backgroundSpeechDenoisingPlan: ASSISTANT_OVERRIDES.backgroundSpeechDenoisingPlan,
+    startSpeakingPlan:              ASSISTANT_OVERRIDES.startSpeakingPlan,
+    stopSpeakingPlan:               ASSISTANT_OVERRIDES.stopSpeakingPlan,
+    backgroundSpeechDenoisingPlan:  ASSISTANT_OVERRIDES.backgroundSpeechDenoisingPlan,
     firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
 
@@ -604,6 +616,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     phone:            '',
     appointmentTime:  '',
     availability:     '',
+    service:          '',   /* questionnaireService  — col P in sheet */
+    pain:             '',   /* questionnairePain     — col Q in sheet */
+    spend:            '',   /* questionnaireSpend    — col R in sheet */
     bookingIntent:    false,
     completionPhrase: false,
     rawTranscript:    []
@@ -618,6 +633,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   let connectingTimer      = null;
   let backendSyncTimer     = null;
   let assistantContextSent = false;
+  let completionRedirectTimer = null;
+
+  /* Redirect only after ARIA says the exact closeout phrase. */
+  const COMPLETION_PHRASE_REGEX = /\bwe are all set\b/i;
+  const COMPLETION_REDIRECT_DELAY_MS = 1600;
 
   const statusEl      = document.querySelector('.status');
   const hintTextEl    = document.getElementById('hintText');
@@ -777,9 +797,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       completionPhrase: bookingLead.completionPhrase ? 'Yes' : 'No',
       questionnaireName: answers.name || '',
       questionnaireBusinessType: answers.biz || '',
-      questionnaireService: answers.service || '',
-      questionnairePain: answers.pain || '',
-      questionnaireSpend: answers.spend || '',
+      questionnaireService: bookingLead.service || answers.service || '',
+      questionnairePain: bookingLead.pain || answers.pain || '',
+      questionnaireSpend: bookingLead.spend || answers.spend || '',
       transcript: bookingLead.rawTranscript
         .map((t) => `[${String(t.role || 'unknown').toUpperCase()}] ${String(t.text || '')}`)
         .join(' | '),
@@ -953,6 +973,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(connectingTimer);
       active    = true;
       finishing = false;
+      clearTimeout(completionRedirectTimer);
       setState('listening');
       setHintMessage('Speak naturally — ARIA will guide you');
       sendAssistantContextIfAvailable();
@@ -971,7 +992,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         finishing ? 'completion' : 'call-end',
         { keepalive: true, preferBeacon: true }
       );
-      if (finishing) goToNextStep();
+      if (finishing) {
+        setHintMessage('All set — taking you to the next step…');
+        goToNextStep();
+      }
     });
 
     /* speech-start / speech-end refer to ARIA's TTS output */
@@ -1075,16 +1099,119 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     /*
       Only trigger completion on ARIA's turns.
     */
-    if (role === 'assistant' && /\bwe are all set\b/i.test(text)) {
-      finishing = true;
-      bookingLead.completionPhrase = true;
-      saveLeadSnapshot();
-      syncToSheets('completion');
-      setTimeout(() => {
-        if (vapi && active) vapi.stop();
-        else goToNextStep();
-      }, 1200);
+    if (role === 'assistant' && COMPLETION_PHRASE_REGEX.test(text)) {
+      finishConversationAndAdvance();
     }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     COMPLETION FLOW — close call + advance to paywall
+     Only runs after ARIA says: "We are all set."
+  ═══════════════════════════════════════════════════════════════ */
+  function finishConversationAndAdvance() {
+    if (finishing) return;
+
+    finishing = true;
+    bookingLead.completionPhrase = true;
+    saveLeadSnapshot();
+    syncToSheets('completion');
+    setHintMessage('All set — taking you to the next step…');
+
+    clearTimeout(completionRedirectTimer);
+    completionRedirectTimer = setTimeout(() => {
+      if (vapi && active) {
+        try { vapi.stop(); } catch (e) {
+          console.warn('Could not stop Vapi before redirect:', e);
+          goToNextStep();
+        }
+      } else {
+        goToNextStep();
+      }
+    }, COMPLETION_REDIRECT_DELAY_MS);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SPOKEN TEXT NORMALISATION
+     Converts spoken-aloud formats → machine-readable before detection.
+     Handles emails said aloud, phonetic alphabets, and common fillers.
+  ═══════════════════════════════════════════════════════════════ */
+
+  /* NATO / common phonetic alphabet → letter */
+  const PHONETIC_MAP = {
+    alpha:'a', bravo:'b', charlie:'c', delta:'d', echo:'e',
+    foxtrot:'f', golf:'g', hotel:'h', india:'i', juliet:'j',
+    kilo:'k', lima:'l', mike:'m', november:'n', oscar:'o',
+    papa:'p', quebec:'q', romeo:'r', sierra:'s', tango:'t',
+    uniform:'u', victor:'v', whiskey:'w', xray:'x', yankee:'y',
+    zulu:'z',
+    /* common non-NATO variants */
+    apple:'a', boy:'b', cat:'c', dog:'d', edward:'e',
+    frank:'f', george:'g', henry:'h', ida:'i', john:'j',
+    king:'k', love:'l', mary:'m', nancy:'n', ocean:'o',
+    peter:'p', queen:'q', robert:'r', sam:'s', thomas:'t',
+    uncle:'u', victor:'v', william:'w', young:'y', zebra:'z'
+  };
+
+  /**
+   * Resolve a single phonetic token to its letter, or return the
+   * original token if it's already a single letter.
+   */
+  function resolvePhonetic(token) {
+    const t = token.toLowerCase();
+    if (t.length === 1) return t;
+    return PHONETIC_MAP[t] || token;
+  }
+
+  /**
+   * Convert spoken email / identifier text to a usable string.
+   * Handles:
+   *   "john at gmail dot com"          → john@gmail.com
+   *   "j o h n at g mail dot com"     → john@gmail.com
+   *   "juliet oscar hotel november …"  → john@…
+   *   "underscore / hyphen / dash"
+   */
+  function normalizeSpokenIdentifier(raw) {
+    return raw
+      /* punctuation words */
+      .replace(/\bat\b/gi,         '@')
+      .replace(/\bdot\b/gi,        '.')
+      .replace(/\bperiod\b/gi,     '.')
+      .replace(/\bunderscore\b/gi, '_')
+      .replace(/\bdash\b/gi,       '-')
+      .replace(/\bhyphen\b/gi,     '-')
+      /* resolve phonetics — word by word */
+      .split(/\s+/)
+      .map(resolvePhonetic)
+      .join('')
+      /* collapse any remaining spaces */
+      .replace(/\s+/g, '')
+      .toLowerCase();
+  }
+
+  /**
+   * Attempt to extract an email from a block of text that might be
+   * spoken aloud in any of the normalised formats above.
+   * Returns null if nothing plausible is found.
+   */
+  function extractSpokenEmail(text) {
+    /* 1. Standard typed-style email already in text */
+    const directMatch = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
+    if (directMatch) return directMatch[0].toLowerCase();
+
+    /* 2. Spoken "… at … dot …" pattern */
+    const spokenMatch = text.match(
+      /([A-Za-z0-9 .]+?)\s+(?:at)\s+([A-Za-z0-9 .]+?)\s+(?:dot)\s+([A-Za-z]{2,})/i
+    );
+    if (spokenMatch) {
+      const local  = normalizeSpokenIdentifier(spokenMatch[1]);
+      const domain = normalizeSpokenIdentifier(spokenMatch[2]);
+      const tld    = normalizeSpokenIdentifier(spokenMatch[3]);
+      const email  = `${local}@${domain}.${tld}`;
+      /* Sanity-check: must look like a real email */
+      if (/^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email)) return email;
+    }
+
+    return null;
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1102,32 +1229,35 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function detectLeadFields(text, role) {
 
-    /* EMAIL */
-    const email = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
-    if (email) bookingLead.email = email[0];
+    /* ── EMAIL (spoken + typed formats) ── */
+    const emailFound = extractSpokenEmail(text);
+    if (emailFound) bookingLead.email = emailFound;
 
-    /* PHONE */
+    /* ── PHONE ── */
     const phone = text.match(
       /(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/
     );
     if (phone && !bookingLead.phone) bookingLead.phone = phone[0].trim();
 
-    /* NAME */
-    if (!bookingLead.name) {
-      const nameWithPrefix = text.match(
-        /(?:my name is|i am|i'm|i go by|this is|it'?s|call me)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i
-      );
-      if (nameWithPrefix) {
-        bookingLead.name = cleanValue(nameWithPrefix[1]);
-      } else if (role === 'user') {
-        const bareNamePattern = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
-        if (bareNamePattern && text.length < 40) {
-          bookingLead.name = cleanValue(bareNamePattern[1]);
-        }
+    /* ── NAME ──
+       Matches explicit "my name is …", "I'm …", or a bare name reply.
+       Also captures ARIA's read-back so a correction is caught:
+         ARIA: "Nice to meet you, Sarah — did I get that right?"
+         USER: "Actually it's Sara"  ← bare correction
+    */
+    const nameWithPrefix = text.match(
+      /(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i
+    );
+    if (nameWithPrefix) {
+      bookingLead.name = cleanValue(nameWithPrefix[1]);
+    } else if (role === 'user' && !bookingLead.name) {
+      const bareNamePattern = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
+      if (bareNamePattern && text.length < 40) {
+        bookingLead.name = cleanValue(bareNamePattern[1]);
       }
     }
 
-    /* BUSINESS NAME */
+    /* ── BUSINESS NAME ── */
     if (!bookingLead.businessName) {
       const biz = text.match(
         /(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i
@@ -1135,7 +1265,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (biz) bookingLead.businessName = cleanValue(biz[1]);
     }
 
-    /* LOCATION */
+    /* ── LOCATION ── */
     if (!bookingLead.location) {
       const loc = text.match(
         /(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i
@@ -1143,7 +1273,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (loc) bookingLead.location = cleanValue(loc[1]);
     }
 
-    /* APPOINTMENT TIME */
+    /* ── APPOINTMENT TIME ── */
     if (!bookingLead.appointmentTime) {
       const timePattern = text.match(
         /(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?) (?:at|on|for|a[t]?)?\s*((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next week|\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening)[^,.!?]{0,40})/i
@@ -1151,7 +1281,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (timePattern) bookingLead.appointmentTime = cleanValue(timePattern[1]);
     }
 
-    /* AVAILABILITY */
+    /* ── AVAILABILITY ── */
     if (!bookingLead.availability) {
       const availPattern = text.match(
         /\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i
@@ -1159,9 +1289,36 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (availPattern) bookingLead.availability = cleanValue((availPattern[1] + availPattern[2]).trim());
     }
 
-    /* BOOKING INTENT */
+    /* ── BOOKING INTENT ── */
     if (!bookingLead.bookingIntent) {
       bookingLead.bookingIntent = /\b(book|booking|appointment|schedule|calendar|call|consultation|meeting|slot)\b/i.test(text);
+    }
+
+    /* ── SERVICE (questionnaireService — sheet col P) ──
+       Captures what the user does / offers */
+    if (!bookingLead.service) {
+      const svc = text.match(
+        /(?:(?:my |our )?(?:service is|services? (?:include|are)|we (?:offer|do|provide|specialize in|focus on)|i (?:offer|do|provide|specialize in|help with)|primary service is|main service is))\s+([^,.!?]{3,80})/i
+      );
+      if (svc) bookingLead.service = cleanValue(svc[1]);
+    }
+
+    /* ── PAIN / CHALLENGE (questionnairePain — sheet col Q) ──
+       Captures the problem they want solved */
+    if (!bookingLead.pain) {
+      const pain = text.match(
+        /(?:(?:my |our |the )?(?:biggest (?:challenge|problem|issue|struggle) is|challenge is|problem is|pain (?:point )?is|struggling with|having trouble with|issue is|i (?:need help|can't|cannot) (?:with )?|trying to (?:fix|solve|improve)))\s+([^,.!?]{3,100})/i
+      );
+      if (pain) bookingLead.pain = cleanValue(pain[1]);
+    }
+
+    /* ── SPEND / BUDGET (questionnaireSpend — sheet col R) ──
+       Captures budget, ad spend, or revenue figures */
+    if (!bookingLead.spend) {
+      const spend = text.match(
+        /(?:(?:(?:monthly |weekly |annual |current )?(?:budget|spend|spending|ad spend|revenue|make|earn|doing|bringing in)) (?:is |of |about |around |roughly )?)(\$[\d,]+(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?|\d+(?:,\d{3})*(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?)/i
+      );
+      if (spend) bookingLead.spend = cleanValue(spend[1]);
     }
 
     saveLeadSnapshot();
