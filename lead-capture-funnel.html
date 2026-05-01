@@ -1216,26 +1216,49 @@
     }
   }
 
-  /* Mobile/GPU pressure tuning without removing effects. */
-  @media (hover: none), (pointer: coarse) {
-    .video-stage {
-      filter: drop-shadow(0 18px 30px rgba(2, 132, 199, 0.24));
-    }
+	  /* Mobile/GPU pressure tuning without removing effects. */
+	  @media (hover: none), (pointer: coarse) {
+	    html {
+	      scroll-behavior: auto;
+	    }
 
-    .video-stage::before {
-      filter: blur(18px);
-    }
+	    body::before,
+	    body::after {
+	      display: none;
+	    }
 
-    .benefit-card,
-    .offer-item {
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
+	    .video-stage {
+	      filter: none;
+	    }
 
-    #benefits .card:hover {
-      transform: rotate3d(0.35, 0.7, 0, 14deg);
-    }
-  }
+	    .video-stage::before {
+	      animation: none;
+	      filter: blur(12px);
+	      opacity: 0.62;
+	    }
+
+	    .video-stage::after {
+	      box-shadow: 0 0 24px rgba(56, 189, 248, 0.32);
+	    }
+
+	    .benefit-card,
+	    .offer-item {
+	      backdrop-filter: none;
+	      -webkit-backdrop-filter: none;
+	    }
+
+	    .benefit-card:hover,
+	    #benefits .card:hover {
+	      transform: none;
+	    }
+
+	    .parallax-enabled .hero,
+	    .parallax-enabled #features,
+	    .parallax-enabled #benefits {
+	      transform: none;
+	      will-change: auto;
+	    }
+	  }
 
   body.is-scrolling * { animation-play-state: paused !important; }
 </style>
@@ -1323,7 +1346,7 @@
           <div class="video-col">
             <div class="video-stage">
             <div class="video-wrap">
-              <video class="aria-video" src="Aria Video AD.mov" autoplay muted loop playsinline preload="auto" aria-label="Aria video ad"></video>
+              <video class="aria-video" data-src="Aria Video AD.mov" muted loop playsinline preload="metadata" aria-label="Aria video ad"></video>
               <div class="video-audio-toggle" aria-hidden="true">
                 <svg class="audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -1503,6 +1526,7 @@
 
 <script>
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isCoarsePointer = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
   if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
@@ -1519,17 +1543,21 @@
     document.body.classList.add('page-loaded');
   });
 
-  document.querySelectorAll('.video-wrap').forEach((wrap) => {
-    const video = wrap.querySelector('.aria-video');
-    if (!video) return;
+	  document.querySelectorAll('.video-wrap').forEach((wrap) => {
+	    const video = wrap.querySelector('.aria-video');
+	    if (!video) return;
+	    const shouldLoadVideo = !isCoarsePointer && window.innerWidth > 980;
 
-    const syncAudioState = () => {
-      wrap.classList.toggle('audio-on', !video.muted);
-    };
+	    const syncAudioState = () => {
+	      wrap.classList.toggle('audio-on', !video.muted);
+	    };
 
-    video.muted = true;
-    video.play().catch(() => {});
-    syncAudioState();
+	    video.muted = true;
+	    syncAudioState();
+	    if (!shouldLoadVideo) return;
+
+	    if (!video.src) video.src = video.dataset.src;
+	    video.play().catch(() => {});
 
     wrap.addEventListener('click', () => {
       video.muted = !video.muted;
@@ -1569,6 +1597,14 @@
       revealItems.forEach((item) => item.classList.add('is-visible'));
     }
 
+    if (isCoarsePointer || window.innerWidth <= 980) {
+      document.body.classList.add('mobile-scroll-optimized');
+      setTimeout(() => {
+        document.querySelectorAll('.hero-copy, .hero-media, .reveal').forEach((el) => {
+          el.style.willChange = 'auto';
+        });
+      }, 1000);
+    } else {
     const hero = document.querySelector('.hero');
     const problem = document.querySelector('#features');
 
@@ -1717,6 +1753,7 @@
         el.style.willChange = 'auto';
       });
     }, 1400);
+    }
   }
 </script>
 </body>
