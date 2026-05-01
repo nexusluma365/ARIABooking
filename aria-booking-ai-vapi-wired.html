@@ -360,12 +360,6 @@
     </section>
   </main>
 
-<!--
-  Pinned to a specific semver range instead of @latest to prevent
-  silent SDK breaking changes from killing the live orb.
--->
-<script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/dist/vapi.js"></script>
-
 <script>
   /* ═══════════════════════════════════════════════════════════════
      ██████  CONFIG — EDIT THESE VALUES BEFORE GOING LIVE
@@ -374,6 +368,7 @@
   const VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';  // Vapi public web key
   const ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';  // Vapi dashboard assistant ID
   const NEXT_STEP_URL = 'aria-strategy-apple.html';
+  const VAPI_SDK_URL = 'https://esm.sh/@vapi-ai/web@2';
 
   /* Google Apps Script Web App endpoint for ARIA call sync */
   const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby2KjP5rEWriFihNp1QM1G1OzmATLoQoRfP53rV-36MyWQzh9v1mqVjmfNaIXhhDtgSrw/exec';
@@ -579,16 +574,25 @@ Do not say that phrase until the lead details are collected and the next step is
   /* ═══════════════════════════════════════════════════════════════
      VAPI INSTANCE
   ═══════════════════════════════════════════════════════════════ */
-  function ensureVapiInstance() {
+  let VapiConstructor = null;
+
+  async function getVapiConstructor() {
+    if (VapiConstructor) return VapiConstructor;
+
+    const module = await import(VAPI_SDK_URL);
+    VapiConstructor = module.default || module.Vapi;
+    if (typeof VapiConstructor !== 'function') {
+      throw new Error('Vapi web SDK loaded, but no constructor was exported.');
+    }
+    return VapiConstructor;
+  }
+
+  async function ensureVapiInstance() {
     if (!window.isSecureContext) {
       throw new Error('Microphone access requires HTTPS or localhost.');
     }
-    if (typeof Vapi !== 'function') {
-      throw new Error(
-        'Vapi web SDK failed to load. Check your network connection or ad-blocker.'
-      );
-    }
     if (!vapi) {
+      const Vapi = await getVapiConstructor();
       vapi = new Vapi(VAPI_KEY);
       bindVapiEvents();
     }
@@ -632,7 +636,7 @@ Do not say that phrase until the lead details are collected and the next step is
         }
       }, 12000);
 
-      ensureVapiInstance();
+      await ensureVapiInstance();
 
       /*
         ASSISTANT_ID (dashboard) takes priority.
