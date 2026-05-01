@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Answer a few quick questions so Nexus Luma can build the right booking setup for your business.">
+<meta name="theme-color" content="#0b168d">
+<title>Nexus Luma | Booking Questionnaire</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+button, a, [role="button"], .opt, .back-btn, .btn-primary {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+:root {
+  --text: #f8fbff;
+  --text-soft: rgba(248, 251, 255, 0.78);
+  --text-dim: rgba(248, 251, 255, 0.56);
+  --border: rgba(255, 255, 255, 0.18);
+  --border-soft: rgba(255, 255, 255, 0.10);
+  --accent: #93f565;
+  --accent-hover: #a4ff78;
+  --accent-text: #0c2c08;
+  --danger: #ffd2de;
+  --radius-card: 36px;
+  --radius-md: 18px;
+  --radius-pill: 999px;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+html, body {
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  font-family: "Manrope", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(89, 200, 255, 0.18), transparent 60%),
+    radial-gradient(circle at 88% 14%, rgba(162, 255, 245, 0.55), rgba(88, 218, 255, 0.22) 22%, transparent 46%),
+    radial-gradient(circle at 16% 84%, rgba(81, 155, 255, 0.42), transparent 38%),
+    linear-gradient(180deg, #060b4a 0%, #0b168d 40%, #0b3aa5 72%, #1e8ec4 100%);
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 35%, rgba(4, 8, 40, 0.55) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.05));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.intro-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, rgba(6, 11, 50, 0.55), rgba(6, 11, 50, 0.30));
+  transition: opacity 700ms var(--ease), visibility 700ms var(--ease);
+}
+
+.intro-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.intro-content {
+  text-align: center;
+  animation: introIn 800ms var(--ease) both;
+}
+
+.intro-mark,
+.glass-mark {
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 12px 28px rgba(8, 18, 80, 0.35);
+}
+
+.intro-mark { width: 56px; height: 56px; border-radius: 18px; margin-bottom: 1.2rem; }
+.glass-mark { width: 44px; height: 44px; border-radius: 14px; margin-bottom: 1rem; }
+
+.intro-title,
+.hero-title,
+.question,
+.headline {
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+
+.intro-title { font-size: clamp(2rem, 6vw, 3.6rem); line-height: 0.98; }
+.intro-text { margin-top: 0.85rem; font-size: clamp(1rem, 2vw, 1.12rem); color: var(--text-soft); }
+
+.app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding:
+    max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-top))
+    max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-right))
+    max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-bottom))
+    max(clamp(1rem, 3vw, 2rem), env(safe-area-inset-left));
+  position: relative;
+  z-index: 1;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px) scale(0.985);
+  transition: opacity 800ms var(--ease), transform 800ms var(--ease), visibility 0s linear 800ms;
+}
+
+.app.ready {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition: opacity 800ms var(--ease), transform 800ms var(--ease), visibility 0s linear 0s;
+}
+
+.app.page-exit {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px) scale(0.99);
+  transition: opacity 420ms ease, transform 420ms var(--ease), visibility 0s linear 420ms;
+}
+
+.glass-wrap {
+  width: min(860px, 100%);
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-copy {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title { font-size: clamp(1.7rem, 4.5vw, 2.4rem); line-height: 1.04; }
+.hero-text { margin-top: 0.5rem; color: var(--text-soft); font-size: 1rem; letter-spacing: -0.01em; }
+
+.card {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  border: 4px solid rgba(255, 255, 255, 0.88);
+  background: rgba(0, 210, 255, 0.30);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 0 90px 0 #3ab8ff inset,
+    0 0 28px #82e1ffaa,
+    0 0 60px -10px rgba(0, 180, 255, 0.5);
+  contain: layout paint;
+  transform: translateZ(0);
+  animation: cardFloat 2.4s ease-in-out infinite;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0) 28%),
+    radial-gradient(ellipse 70% 30% at 50% 0%, rgba(255, 255, 255, 0.14), transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 35%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, transparent 0%, rgba(4, 14, 70, 0.22) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-shell {
+  position: relative;
+  z-index: 2;
+  padding: clamp(1.1rem, 2.5vw, 1.5rem);
+}
+
+.card-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.progress-wrap {
+  flex: 1;
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.progress-meta span:last-child {
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.progress-track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(180, 230, 255, 0.95), rgba(172, 255, 138, 0.95));
+  box-shadow: 0 0 12px rgba(172, 255, 138, 0.35);
+  transition: width 480ms var(--ease);
+}
+
+.step-pill,
+.back-btn {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.step-pill {
+  min-width: 86px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+}
+
+.back-btn {
+  appearance: none;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms var(--ease), background 220ms ease, transform 220ms var(--ease), color 220ms ease;
+}
+
+.back-btn.visible { opacity: 1; pointer-events: auto; }
+.back-btn:hover { background: rgba(255, 255, 255, 0.09); color: var(--text); transform: translateY(-1px); }
+.back-btn:active { transform: scale(0.96); }
+
+.form-stage {
+  position: relative;
+  min-height: 480px;
+  padding: 0.5rem 0.25rem 0;
+  overflow: hidden;
+}
+
+.step {
+  display: none;
+  min-height: 460px;
+  padding: clamp(0.75rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1rem) clamp(1rem, 3vw, 1.25rem);
+  align-content: center;
+  contain: content;
+}
+
+.step.active {
+  display: grid;
+  animation: fadeIn 280ms var(--ease) both;
+}
+
+.step.leaving {
+  display: grid;
+  animation: fadeOut 220ms var(--ease) both;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin: 0 auto 1.1rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  justify-self: center;
+}
+
+.headline,
+.question {
+  font-size: clamp(1.7rem, 4.5vw, 2.4rem);
+  line-height: 1.05;
+  max-width: 18ch;
+  margin-bottom: 0.85rem;
+  text-align: center;
+  justify-self: center;
+}
+
+.subtext {
+  max-width: 32rem;
+  margin: 0 auto 1.4rem;
+  color: var(--text-soft);
+  line-height: 1.55;
+  font-size: 0.98rem;
+  text-align: center;
+}
+
+.options { display: grid; gap: 0.6rem; margin-bottom: 1rem; }
+.options.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.options.cols-1 { grid-template-columns: 1fr; }
+
+.opt {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.95rem 1.05rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font: 500 0.96rem/1.4 "Manrope", sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background 220ms ease, transform 220ms var(--ease), border-color 220ms ease, color 220ms ease, box-shadow 220ms ease;
+}
+
+.opt:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+  color: var(--text);
+}
+
+.opt:active { transform: scale(0.98); transition: transform 80ms ease, background 80ms ease; }
+
+.opt.selected {
+  color: var(--text);
+  border-color: rgba(180, 230, 255, 0.40);
+  background: rgba(180, 230, 255, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 0 22px -6px rgba(120, 200, 255, 0.40);
+}
+
+.radio {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.opt.selected .radio {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.opt.selected .radio::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1a3fb8;
+}
+
+.input-wrap { margin-bottom: 0.9rem; }
+
+.clean-input {
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: 500 16px/1.5 "Manrope", sans-serif;
+  padding: 1rem 1.1rem;
+  outline: none;
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+
+.clean-input::placeholder { color: rgba(248, 251, 255, 0.40); font-weight: 400; }
+.clean-input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(180, 230, 255, 0.45);
+  box-shadow: 0 0 0 4px rgba(120, 200, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+.btn-primary {
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 1.05rem 1.2rem;
+  min-height: 52px;
+  font: 700 0.98rem/1 "Manrope", sans-serif;
+  cursor: pointer;
+  background: linear-gradient(180deg, var(--accent), #82e35a);
+  color: var(--accent-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.10),
+    0 8px 22px -6px rgba(147, 245, 101, 0.45),
+    0 0 40px -8px rgba(147, 245, 101, 0.35);
+  transition: transform 220ms var(--ease), background 220ms ease, opacity 220ms ease, box-shadow 220ms ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, var(--accent-hover), #93f068);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active { transform: scale(0.97); transition: transform 80ms ease; }
+
+.step-dots { display: flex; gap: 0.5rem; margin-top: 1.2rem; justify-content: center; }
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: width 280ms var(--ease), background 280ms ease;
+}
+.dot.active { width: 22px; background: rgba(255, 255, 255, 0.85); }
+
+.error-hint {
+  display: none;
+  margin-top: 0.5rem;
+  color: var(--danger);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.error-hint.show {
+  display: block;
+  animation: fadeIn 280ms var(--ease) both;
+}
+
+.shake { animation: shake 380ms ease-in-out; }
+
+#rays {
+  z-index: 2;
+  position: relative;
+  bottom: -1.2em;
+  animation: raysAnim 2s ease-in-out infinite;
+  pointer-events: none;
+  width: 100%;
+  text-align: center;
+}
+
+#emitter {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  width: 100%;
+}
+
+@keyframes raysAnim {
+  0%, 100% { opacity: 0.55; filter: brightness(0.9); }
+  50% { opacity: 1; filter: brightness(1.25); }
+}
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes introIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .app, .app.ready {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+  }
+  .intro-screen { display: none !important; }
+}
+
+@media (max-width: 720px) {
+  :root { --radius-card: 32px; }
+  .glass-wrap { width: 100%; }
+  .hero-copy { margin-bottom: 1rem; }
+  .hero-title { font-size: 1.6rem; }
+  .hero-text { font-size: 0.95rem; }
+  .glass-mark { width: 40px; height: 40px; margin-bottom: 0.7rem; }
+  .card {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-width: 3px;
+  }
+  .card-shell { padding: 0.9rem; }
+  .card-topbar { flex-wrap: wrap; gap: 0.5rem; }
+  .progress-wrap { width: 100%; order: 1; }
+  .step-pill { flex: 1; min-width: 0; order: 2; }
+  .back-btn { flex: 1; justify-content: center; order: 3; }
+  .back-btn:not(.visible) { display: none; }
+  .options.cols-2 { grid-template-columns: 1fr; }
+  .form-stage, .step { min-height: 440px; }
+}
+
+@media (max-width: 420px) {
+  :root { --radius-card: 28px; }
+  .app { padding: 0.8rem; }
+  .hero-copy { margin-bottom: 0.85rem; }
+  .glass-mark { width: 36px; height: 36px; margin-bottom: 0.6rem; }
+  .hero-title { font-size: 1.35rem; }
+  .hero-text { font-size: 0.88rem; margin-top: 0.3rem; }
+  .card-shell { padding: 0.75rem; }
+  .form-stage, .step { min-height: 400px; }
+  .step { padding: 0.75rem 0.4rem 0.9rem; }
+  .headline, .question { font-size: 1.5rem; max-width: 18ch; margin-bottom: 0.7rem; }
+  .subtext { font-size: 0.92rem; margin-bottom: 1.1rem; }
+  .progress-wrap { padding: 0.7rem 0.9rem; }
+  .step-pill { display: none; }
+  .back-btn { padding: 0.78rem 0.9rem; }
+  .opt { padding: 0.85rem 0.95rem; min-height: 50px; font-size: 0.92rem; }
+  .btn-primary { padding: 0.95rem 1.1rem; min-height: 50px; }
+  .clean-input { padding: 0.9rem 1rem; }
+  .step-dots { margin-top: 0.95rem; }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .opt:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-soft);
+    color: var(--text-soft);
+  }
+  .opt.selected:hover {
+    background: rgba(180, 230, 255, 0.10);
+    border-color: rgba(180, 230, 255, 0.40);
+    color: var(--text);
+  }
+  .btn-primary:hover {
+    transform: none;
+    background: linear-gradient(180deg, var(--accent), #82e35a);
+  }
+  .back-btn:hover {
+    transform: none;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-soft);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="intro-screen" id="introScreen" aria-hidden="true">
+  <div class="intro-content">
+    <div class="intro-mark" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="6" width="18" height="12" rx="6" stroke="white" stroke-width="1.8"/>
+        <circle cx="10" cy="12" r="1.6" fill="white"/>
+        <circle cx="14" cy="12" r="1.6" fill="white"/>
+      </svg>
+    </div>
+    <h1 class="intro-title">Welcome To Nexus Luma Booking System</h1>
+    <p class="intro-text">A quick fit check to see where leads are leaking.</p>
+  </div>
+</div>
+
+<div class="app" id="app" role="main">
+  <div class="glass-wrap">
+    <div class="hero-copy">
+      <div class="glass-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="6" width="18" height="12" rx="6" stroke="white" stroke-width="1.8"/>
+          <circle cx="10" cy="12" r="1.6" fill="white"/>
+          <circle cx="14" cy="12" r="1.6" fill="white"/>
+        </svg>
+      </div>
+      <h2 class="hero-title">Nexus Luma Booking System</h2>
+      <p class="hero-text">Find Out Where Your Booking Flow Is Losing Money.</p>
+    </div>
+
+    <main class="card" id="mainCard" aria-live="polite" aria-atomic="false">
+      <div class="card-shell">
+        <div class="card-topbar">
+          <div class="progress-wrap" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Questionnaire progress">
+            <div class="progress-meta">
+              <span>Questionnaire</span>
+              <span id="progressLabel" aria-hidden="true">0%</span>
+            </div>
+            <div class="progress-track"><div class="progress-bar" id="progress"></div></div>
+          </div>
+          <div class="step-pill" id="stepCounter" aria-hidden="true"></div>
+          <button class="back-btn" id="backBtn" onclick="goBack()" type="button" aria-label="Go to previous step">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M10 12.5L5.5 8 10 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back
+          </button>
+        </div>
+
+        <div class="form-stage">
+          <section class="step active" id="step-0">
+            <div class="eyebrow">Nexus Booking System</div>
+            <h1 class="headline">Let's map your booking opportunity.</h1>
+            <p class="subtext">Answer a few quick questions so Aria can understand your business, your lead problem, and what your booking system needs to fix first.</p>
+            <button class="btn-primary" onclick="nextStep()" type="button">Start The Fit Check</button>
+            <div class="step-dots" id="dots-0" aria-hidden="true"></div>
+          </section>
+
+          <section class="step" id="step-1">
+            <div class="eyebrow">Step 1 of 5</div>
+            <h2 class="question">What is costing you the most money right now?</h2>
+            <p class="subtext">Choose the one that feels most true for your business today.</p>
+            <div class="options cols-1" role="group" aria-label="Customer challenge options">
+              <button class="opt" onclick="selectOpt(this,'challenge')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Not enough qualified leads</span></button>
+              <button class="opt" onclick="selectOpt(this,'challenge')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Leads go cold before I reply</span></button>
+              <button class="opt" onclick="selectOpt(this,'challenge')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">I miss calls or messages</span></button>
+              <button class="opt" onclick="selectOpt(this,'challenge')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">People ask questions but do not book</span></button>
+              <button class="opt" onclick="selectOpt(this,'challenge')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">No clear follow-up system</span></button>
+            </div>
+            <div class="error-hint" id="challengeError" role="alert">Please select an option to continue.</div>
+            <button class="btn-primary" onclick="nextStep()" type="button">Continue</button>
+            <div class="step-dots" id="dots-1" aria-hidden="true"></div>
+          </section>
+
+          <section class="step" id="step-2">
+            <div class="eyebrow">Step 2 of 5</div>
+            <h2 class="question">What usually happens when a new lead reaches out?</h2>
+            <p class="subtext">This shows where trust, speed, or follow-up may be costing you booked calls.</p>
+            <div class="options cols-1" role="group" aria-label="Contact process options">
+              <button class="opt" onclick="selectOpt(this,'contactProcess')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">I reply manually when I can</span></button>
+              <button class="opt" onclick="selectOpt(this,'contactProcess')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Some leads get missed</span></button>
+              <button class="opt" onclick="selectOpt(this,'contactProcess')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">I respond too late</span></button>
+              <button class="opt" onclick="selectOpt(this,'contactProcess')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">There is no clear process</span></button>
+            </div>
+            <div class="error-hint" id="contactProcessError" role="alert">Please select an option to continue.</div>
+            <button class="btn-primary" onclick="nextStep()" type="button">Continue</button>
+            <div class="step-dots" id="dots-2" aria-hidden="true"></div>
+          </section>
+
+          <section class="step" id="step-3">
+            <div class="eyebrow">Step 3 of 5</div>
+            <h2 class="question">Would a 24/7 assistant that qualifies and books leads help you close more?</h2>
+            <p class="subtext">Pick the answer closest to how valuable this would be for you.</p>
+            <div class="options cols-1" role="group" aria-label="AI assistant fit options">
+              <button class="opt" onclick="selectOpt(this,'aiHelp')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Yes — this would help a lot</span></button>
+              <button class="opt" onclick="selectOpt(this,'aiHelp')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Probably — I want to see it</span></button>
+              <button class="opt" onclick="selectOpt(this,'aiHelp')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Not sure — show me how it works</span></button>
+            </div>
+            <div class="error-hint" id="aiHelpError" role="alert">Please select an option to continue.</div>
+            <button class="btn-primary" onclick="nextStep()" type="button">Continue</button>
+            <div class="step-dots" id="dots-3" aria-hidden="true"></div>
+          </section>
+
+          <section class="step" id="step-4">
+            <div class="eyebrow">Step 4 of 5</div>
+            <h2 class="question">What do you currently have in place?</h2>
+            <p class="subtext">We use this to personalize the next step around your brand and your current setup.</p>
+            <div class="options cols-1" role="group" aria-label="Website and booking system options">
+              <button class="opt" onclick="selectOpt(this,'systemStatus')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Website and booking system</span></button>
+              <button class="opt" onclick="selectOpt(this,'systemStatus')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Website only</span></button>
+              <button class="opt" onclick="selectOpt(this,'systemStatus')" type="button" aria-pressed="false"><span class="radio" aria-hidden="true"></span><span class="opt-label">Neither yet</span></button>
+            </div>
+            <div class="error-hint" id="systemStatusError" role="alert">Please select an option to continue.</div>
+            <button class="btn-primary" onclick="nextStep()" type="button">Continue</button>
+            <div class="step-dots" id="dots-4" aria-hidden="true"></div>
+          </section>
+
+          <section class="step" id="step-5">
+            <div class="eyebrow">Step 5 of 5</div>
+            <h2 class="question">Where should we send your personalized next step?</h2>
+            <p class="subtext">Add your details to continue into the Aria demo and see how the system would start qualifying leads for your business.</p>
+            <div class="input-wrap">
+              <input class="clean-input" id="nameInput" type="text" placeholder="Your name" autocomplete="name" autocorrect="off" autocapitalize="words" oninput="clearError('contactError')" onblur="var v=this.value.trim();if(v){data.name=v;sendToSheets();}" onkeydown="if(event.key==='Enter')finishQuestionnaire()" aria-label="Your name">
+            </div>
+            <div class="input-wrap">
+              <input class="clean-input" id="emailInput" type="email" placeholder="Your email" autocomplete="email" autocorrect="off" autocapitalize="none" oninput="clearError('contactError')" onblur="var v=this.value.trim();if(v&&isValidEmail(v)){data.email=v;sendToSheets();}" onkeydown="if(event.key==='Enter')finishQuestionnaire()" aria-label="Your email">
+              <div class="error-hint" id="contactError" role="alert">Please enter your name and a valid email.</div>
+            </div>
+            <button class="btn-primary" onclick="finishQuestionnaire()" type="button">Continue To Aria</button>
+            <div class="step-dots" id="dots-5" aria-hidden="true"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <div id="rays" aria-hidden="true">
+      <svg fill="none" viewBox="0 0 299 152" height="7em" width="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+        <path fill="url(#rays_grad)" d="M149.5 152H133.42L0 0H149.5L299 0L165.58 152H149.5Z"/>
+        <defs>
+          <linearGradient gradientUnits="userSpaceOnUse" y2="12" x2="150" y1="152" x1="149.5" id="rays_grad">
+            <stop stop-color="#00D4FF"/>
+            <stop stop-opacity="0" stop-color="#82E4FF" offset="1"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+
+    <div id="emitter" aria-hidden="true">
+      <svg fill="none" viewBox="0 0 860 61" height="52" width="100%" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+        <g filter="url(#em_f0)">
+          <path fill="#1a2255" d="M430 28C671.973 28 860 22.403 860 15.5V40.5C860 47.403 671.973 53 430 53C188.027 53 0 47.403 0 40.5V15.51C0.034 22.409 188.047 28 430 28Z"/>
+        </g>
+        <ellipse fill="url(#em_radial)" ry="4.8" rx="140" cy="17.4" cx="430"/>
+        <path fill="#1e2f6b" d="M430 28C671.973 28 860 22.403 860 15.5C860 8.596 671.973 3 430 3C188.026 3 0 8.596 0 15.5C0 22.403 188.026 28 430 28ZM430 20.308C514.77 20.308 583 18.156 583 15.5C583 12.845 514.77 10.693 430 10.693C345.23 10.693 277 12.845 277 15.5C277 18.156 345.23 20.308 430 20.308Z"/>
+        <defs>
+          <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="45.5" width="870" y="15.4" x="-5" id="em_f0">
+            <feFlood result="BackgroundImageFix" flood-opacity="0"/>
+            <feOffset dy="4"/><feGaussianBlur stdDeviation="2"/>
+            <feBlend result="shape" in="SourceGraphic" mode="normal"/>
+          </filter>
+          <radialGradient gradientTransform="translate(430 17.4) rotate(90) scale(6.25 181)" gradientUnits="userSpaceOnUse" r="1" cy="0" cx="0" id="em_radial">
+            <stop stop-color="#00FFF0"/>
+            <stop stop-color="#001AFF" offset="0.9"/>
+          </radialGradient>
+        </defs>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── Google Sheets live-sync (Apps Script Web App) ─────────────────────── */
+var SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby2KjP5rEWriFihNp1QM1G1OzmATLoQoRfP53rV-36MyWQzh9v1mqVjmfNaIXhhDtgSrw/exec';
+
+/* Unique ID for this visitor's session — used to find & update their row */
+var SESSION_ID = (function() {
+  try {
+    var stored = sessionStorage.getItem('nlq_session');
+    if (stored) return stored;
+    var id = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    sessionStorage.setItem('nlq_session', id);
+    return id;
+  } catch(e) {
+    return Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  }
+})();
+
+function buildLeadSyncPayload(extra) {
+  var occurredAt = new Date().toISOString();
+  var completed = Boolean(extra && extra.completed);
+  return {
+    sessionId: SESSION_ID,
+    challenge: data.challenge || '',
+    contactProcess: data.contactProcess || '',
+    aiHelp: data.aiHelp || '',
+    systemStatus: data.systemStatus || '',
+    name: data.name || '',
+    email: data.email || '',
+    completed: completed,
+    updatedAt: occurredAt
+  };
+}
+
+function sendToSheets(extra) {
+  if (!SHEETS_WEBHOOK_URL || SHEETS_WEBHOOK_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') return;
+  var payload = buildLeadSyncPayload(extra);
+  try {
+    fetch(SHEETS_WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    console.warn('Sheets sync skipped:', e);
+  }
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+var TOTAL = 6;
+var current = 0;
+var data = {
+  challenge: '',
+  contactProcess: '',
+  aiHelp: '',
+  systemStatus: '',
+  name: '',
+  email: ''
+};
+var ARIA_URL = 'aria-booking-ai-vapi-wired.html';
+var progEl = document.getElementById('progress');
+var progBar = document.querySelector('[role="progressbar"]');
+
+var validators = {
+  1: function() { return requireChoice('challenge', 'challengeError'); },
+  2: function() { return requireChoice('contactProcess', 'contactProcessError'); },
+  3: function() { return requireChoice('aiHelp', 'aiHelpError'); },
+  4: function() { return requireChoice('systemStatus', 'systemStatusError'); }
+};
+
+function requireChoice(key, errorId) {
+  if (!data[key]) {
+    showError(errorId);
+    shakeCard();
+    return false;
+  }
+  return true;
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function validateContact() {
+  var name = document.getElementById('nameInput').value.trim();
+  var email = document.getElementById('emailInput').value.trim();
+  if (!name || !isValidEmail(email)) {
+    showError('contactError');
+    shakeCard();
+    return false;
+  }
+  data.name = name;
+  data.email = email;
+  return true;
+}
+
+function showError(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.add('show');
+}
+
+function clearError(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+function shakeCard() {
+  var card = document.getElementById('mainCard');
+  card.classList.remove('shake');
+  void card.offsetWidth;
+  card.classList.add('shake');
+  setTimeout(function() { card.classList.remove('shake'); }, 380);
+}
+
+function updateUI() {
+  var pct = Math.round((current / (TOTAL - 1)) * 100);
+  progEl.style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = pct + '%';
+  if (progBar) progBar.setAttribute('aria-valuenow', pct);
+
+  var back = document.getElementById('backBtn');
+  current > 0 ? back.classList.add('visible') : back.classList.remove('visible');
+
+  var counter = document.getElementById('stepCounter');
+  counter.textContent = current === 0 ? 'Start' : 'Step ' + current + ' / 5';
+
+  buildDots();
+}
+
+function buildDots() {
+  for (var i = 0; i < TOTAL; i++) {
+    var el = document.getElementById('dots-' + i);
+    if (!el) continue;
+    el.innerHTML = '';
+    for (var j = 1; j <= 5; j++) {
+      var dot = document.createElement('div');
+      dot.className = 'dot' + (j === current ? ' active' : '');
+      el.appendChild(dot);
+    }
+  }
+}
+
+function nextStep() {
+  if (current === TOTAL - 1) return;
+  if (validators[current] && !validators[current]()) return;
+  animOut(current);
+  current++;
+  setTimeout(function() {
+    animIn(current);
+    updateUI();
+  }, 220);
+}
+
+function goBack() {
+  if (current === 0) return;
+  animOut(current);
+  current--;
+  setTimeout(function() {
+    animIn(current);
+    updateUI();
+  }, 220);
+}
+
+function animOut(index) {
+  var el = document.getElementById('step-' + index);
+  if (!el) return;
+  el.classList.remove('active');
+  el.classList.add('leaving');
+  setTimeout(function() {
+    el.classList.remove('leaving');
+    el.style.display = 'none';
+  }, 220);
+}
+
+function animIn(index) {
+  var el = document.getElementById('step-' + index);
+  if (!el) return;
+  el.style.display = 'grid';
+  requestAnimationFrame(function() {
+    el.classList.add('active');
+  });
+  if (index === 5) {
+    setTimeout(function() {
+      var input = document.getElementById('nameInput');
+      if (input) input.focus();
+    }, 200);
+  }
+}
+
+function selectOpt(button, group) {
+  var container = button.closest('.options');
+  if (!container) return;
+  container.querySelectorAll('.opt').forEach(function(opt) {
+    opt.classList.remove('selected');
+    opt.setAttribute('aria-pressed', 'false');
+  });
+  button.classList.add('selected');
+  button.setAttribute('aria-pressed', 'true');
+
+  var labelEl = button.querySelector('.opt-label');
+  data[group] = labelEl ? labelEl.textContent.trim() : button.textContent.trim();
+  clearError(group + 'Error');
+  sendToSheets(); // ← live-sync on every option click
+}
+
+function finishQuestionnaire() {
+  if (!validateContact()) return;
+
+  sendToSheets({ completed: true }); // ← final sync with completed flag
+
+  var payload = { completedAt: new Date().toISOString(), answers: data };
+  try {
+    localStorage.setItem('nexusQuestionnaireAnswers', JSON.stringify(payload));
+    localStorage.setItem('aria_booking_email', data.email);
+  } catch (e) {
+    console.warn('Could not persist questionnaire answers:', e);
+  }
+
+  var app = document.getElementById('app');
+  if (app) app.classList.add('page-exit');
+  setTimeout(function() { window.location.href = ARIA_URL; }, 380);
+}
+
+function startIntroSequence() {
+  var intro = document.getElementById('introScreen');
+  var app = document.getElementById('app');
+  setTimeout(function() {
+    intro.classList.add('hidden');
+    app.classList.add('ready');
+  }, 900);
+}
+
+updateUI();
+startIntroSequence();
+</script>
+</body>
+</html>

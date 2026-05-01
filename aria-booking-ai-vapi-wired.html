@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Talk to ARIA, your AI booking specialist, to schedule your free appointment with Nexus Luma." />
+<meta name="theme-color" content="#07189f" />
+<title>ARIA Booking Orb | Nexus Luma</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --deep-blue: #07189f;
+    --royal-blue: #1238c7;
+    --sky-blue: #43c6ee;
+    --aqua: #8af4ee;
+    --lime: #8fff57;
+    --white-soft: rgba(255, 255, 255, 0.92);
+    --white-muted: rgba(255, 255, 255, 0.66);
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #07189f;
+  }
+
+  body {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    user-select: none;
+    color: white;
+    position: relative;
+    isolation: isolate;
+    overscroll-behavior: none;
+    background:
+      radial-gradient(circle at 78% 12%, rgba(138, 244, 238, 0.95) 0%, rgba(72, 203, 235, 0.75) 26%, rgba(27, 104, 210, 0.38) 47%, transparent 68%),
+      radial-gradient(circle at 22% 70%, rgba(48, 107, 255, 0.7) 0%, rgba(26, 56, 188, 0.45) 38%, transparent 64%),
+      linear-gradient(123deg, #08158e 0%, #1439c6 39%, #1fa7d8 74%, #8af4ee 100%);
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.55s ease, transform 0.55s cubic-bezier(.22,.8,.22,1);
+  }
+
+  body.page-ready {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -25%;
+    z-index: -2;
+    background:
+      radial-gradient(circle at 52% 50%, rgba(255, 255, 255, 0.18), transparent 28%),
+      radial-gradient(circle at 42% 62%, rgba(0, 12, 90, 0.35), transparent 44%);
+    filter: blur(10px);
+    opacity: 0.92;
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, rgba(0, 5, 55, 0.35), transparent 43%, rgba(159, 255, 246, 0.2));
+    pointer-events: none;
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .screen {
+    width: min(92vw, 680px);
+    min-height: 520px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 44px 22px;
+  }
+
+  .brand-chip {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    margin: 0 auto 28px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 22px 60px rgba(0, 18, 130, 0.22);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .brand-chip svg { width: 22px; height: 22px; opacity: 0.95; }
+
+  h1 {
+    font-size: clamp(2.15rem, 5vw, 4rem);
+    line-height: 0.96;
+    letter-spacing: -0.07em;
+    font-weight: 760;
+    color: var(--white-soft);
+    text-wrap: balance;
+    margin-bottom: 12px;
+    text-shadow: 0 18px 55px rgba(0, 20, 120, 0.24);
+  }
+
+  .subhead {
+    color: var(--white-muted);
+    font-size: clamp(0.95rem, 1.9vw, 1.1rem);
+    line-height: 1.5;
+    margin-bottom: 50px;
+  }
+
+  /* ── Voice button ── */
+  .voice-stage {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin-inline: auto;
+    display: grid;
+    place-items: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 50%;
+  }
+
+  .voice-stage::before,
+  .voice-stage::after {
+    content: "";
+    position: absolute;
+    inset: 18px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    transform: scale(1);
+    opacity: 0.6;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .voice-stage::after { inset: 0; opacity: 0.25; }
+
+  body.connecting .voice-stage::before,
+  body.listening  .voice-stage::before,
+  body.speaking   .voice-stage::before { animation: ring-pulse 1.8s ease-out infinite; }
+  body.speaking   .voice-stage::after  { animation: ring-pulse 1.15s ease-out infinite; }
+
+  @keyframes ring-pulse {
+    0%   { transform: scale(0.82); opacity: 0.58; }
+    70%  { transform: scale(1.22); opacity: 0; }
+    100% { transform: scale(1.22); opacity: 0; }
+  }
+
+  /* ── Orb loader ── */
+  .loader-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 180px;
+    height: 180px;
+    font-family: Inter, sans-serif;
+    font-size: 1.18rem;
+    letter-spacing: 0.02em;
+    font-weight: 520;
+    color: white;
+    border-radius: 50%;
+    background-color: transparent;
+    user-select: none;
+    transform: translateZ(0);
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(.22,.8,.22,1);
+  }
+
+  .loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    background-color: transparent;
+    animation: loader-rotate 2.2s linear infinite;
+    z-index: 0;
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  @keyframes loader-rotate {
+    0% {
+      transform: rotate(90deg);
+      box-shadow:
+        0 10px 20px 0 rgba(255,255,255,0.96) inset,
+        0 22px 30px 0 rgba(143,255,87,0.62) inset,
+        0 62px 68px 0 rgba(18,56,199,0.92) inset;
+    }
+    50% {
+      transform: rotate(270deg);
+      box-shadow:
+        0 10px 20px 0 rgba(255,255,255,0.92) inset,
+        0 20px 16px 0 rgba(67,198,238,0.78) inset,
+        0 46px 66px 0 rgba(7,24,159,0.96) inset;
+    }
+    100% {
+      transform: rotate(450deg);
+      box-shadow:
+        0 10px 20px 0 rgba(255,255,255,0.96) inset,
+        0 22px 30px 0 rgba(143,255,87,0.62) inset,
+        0 62px 68px 0 rgba(18,56,199,0.92) inset;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .loader { animation-duration: 2.8s; }
+  }
+
+  .loader-letter {
+    display: inline-block;
+    opacity: 0.46;
+    transform: translateY(0);
+    animation: loader-letter-anim 2s infinite;
+    z-index: 1;
+    border-radius: 50ch;
+    border: none;
+    text-shadow: 0 8px 26px rgba(0, 18, 120, 0.5);
+    will-change: opacity, transform;
+  }
+  .loader-letter:nth-child(1) { animation-delay: 0s; }
+  .loader-letter:nth-child(2) { animation-delay: 0.1s; }
+  .loader-letter:nth-child(3) { animation-delay: 0.2s; }
+  .loader-letter:nth-child(4) { animation-delay: 0.3s; }
+
+  @keyframes loader-letter-anim {
+    0%, 100% { opacity: 0.42; transform: translateY(0); }
+    20%       { opacity: 1;    transform: scale(1.15); }
+    40%       { opacity: 0.72; transform: translateY(0); }
+  }
+
+  body.connecting .loader-wrapper { animation: orb-breathe 1.8s ease-in-out infinite; }
+  body.listening  .loader-wrapper { transform: scale(1.03) translateZ(0); }
+  body.speaking   .loader-wrapper { transform: scale(1.08) translateZ(0); }
+  body.speaking   .loader { animation-duration: 1.05s; }
+
+  @keyframes orb-breathe {
+    0%, 100% { transform: scale(1) translateZ(0); }
+    50%       { transform: scale(1.045) translateZ(0); }
+  }
+
+  .status {
+    min-height: 28px;
+    margin-top: 34px;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.76);
+    letter-spacing: -0.01em;
+    contain: inline-size;
+  }
+
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    font-size: 0.82rem;
+    min-width: 240px;
+    justify-content: center;
+  }
+  .hint-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--lime);
+    box-shadow: 0 0 18px rgba(143, 255, 87, 0.9);
+    flex-shrink: 0;
+  }
+
+  body.connecting .status::before                                       { content: "Connecting ARIA…"; }
+  body.listening  .status::before                                       { content: "ARIA is listening…"; }
+  body.speaking   .status::before                                       { content: "ARIA is speaking…"; }
+  body:not(.connecting):not(.listening):not(.speaking) .status::before  { content: "Tap the orb and ARIA will help you book."; }
+
+  @media (max-width: 520px) {
+    .screen { min-height: 100svh; padding: 34px 18px; }
+    .voice-stage { width: 220px; height: 220px; }
+    .loader-wrapper { width: 155px; height: 155px; font-size: 1.05rem; }
+    .subhead { margin-bottom: 34px; }
+    .brand-chip { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .hint { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    body { cursor: default; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    body { opacity: 1; transform: none; }
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .brand-chip { background: rgba(255, 255, 255, 0.2); }
+    .hint { background: rgba(255, 255, 255, 0.18); }
+  }
+</style>
+</head>
+<body>
+  <main class="screen" aria-label="ARIA Booking Orb">
+    <section class="hero-content">
+      <div class="brand-chip" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" role="img" aria-hidden="true">
+          <path d="M8.25 10.1h7.5c1.02 0 1.85.83 1.85 1.85v.1c0 1.02-.83 1.85-1.85 1.85h-7.5A1.85 1.85 0 0 1 6.4 12.05v-.1c0-1.02.83-1.85 1.85-1.85Z" stroke="white" stroke-width="1.55"/>
+          <path d="M9.7 12h.02M14.28 12h.02" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1>Meet Aria<br />Live</h1>
+      <p class="subhead">Click the orb to see how Aria qualifies and books leads</p>
+
+      <button
+        class="voice-stage"
+        type="button"
+        id="orbBtn"
+        aria-label="Start ARIA booking assistant — activates microphone"
+        aria-pressed="false"
+        onclick="toggleCall(event)"
+      >
+        <div class="loader-wrapper" aria-hidden="true">
+          <span class="loader-letter">A</span>
+          <span class="loader-letter">R</span>
+          <span class="loader-letter">I</span>
+          <span class="loader-letter">A</span>
+          <div class="loader"></div>
+        </div>
+      </button>
+
+      <p class="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="hint" role="status" aria-live="polite">
+        <span class="hint-dot" aria-hidden="true"></span>
+        <span id="hintText">Click the orb to activate mic permission and start your guided demo</span>
+      </div>
+    </section>
+  </main>
+
+<!--
+  Pinned to a specific semver range instead of @latest to prevent
+  silent SDK breaking changes from killing the live orb.
+-->
+<script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/dist/vapi.js"></script>
+
+<script>
+  /* ═══════════════════════════════════════════════════════════════
+     ██████  CONFIG — EDIT THESE VALUES BEFORE GOING LIVE
+  ═══════════════════════════════════════════════════════════════ */
+
+  const VAPI_KEY     = '9a35d82e-e2e5-4a37-a7b3-790a8918d89f';  // Vapi public web key
+  const ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';  // Vapi dashboard assistant ID
+  const NEXT_STEP_URL = 'aria-strategy-apple.html';
+
+  /* Google Apps Script Web App endpoint for ARIA call sync */
+  const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby2KjP5rEWriFihNp1QM1G1OzmATLoQoRfP53rV-36MyWQzh9v1mqVjmfNaIXhhDtgSrw/exec';
+
+  /* ═══════════════════════════════════════════════════════════════
+     INLINE ASSISTANT FALLBACK
+     Only used if ASSISTANT_ID is blank. When ASSISTANT_ID is set,
+     all voice/prompt settings come from the Vapi dashboard instead.
+  ═══════════════════════════════════════════════════════════════ */
+  const INLINE_ASSISTANT = {
+    name: 'ARIA Booking Specialist',
+    transcriber: { provider: 'openai', model: 'gpt-4o-transcribe', language: 'en' },
+    model: {
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      temperature: 0.35,
+      messages: [{
+        role: 'system',
+        content: `You are ARIA, a warm AI booking specialist for Nexus Luma.
+Your goal is to help the visitor understand how Aria qualifies leads and guide them toward a $197 strategy call when there is a fit.
+Keep replies short, human, and confident.
+Collect these details naturally, not like a quiz: name, business name, location, email, preferred time or availability, what they want help with, and what is costing them leads right now.
+Confirm the details back to the visitor and explain that the next step is a $197 strategy call where Nexus Luma maps their brand, booking flow, and recommended system.
+When you have enough info and the visitor is ready, say this exact phrase: "We are all set."
+Do not say that phrase until the lead details are collected and the next step is confirmed.`
+      }]
+    },
+    voice: { provider: 'playht', voiceId: 'jennifer' },
+    firstMessage: "Hey, I'm ARIA. I'll show you how I qualify leads and guide them toward booking. First, what's your name?"
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     LEAD STATE
+  ═══════════════════════════════════════════════════════════════ */
+  const bookingLead = {
+    sessionId:        (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+    name:             '',
+    businessName:     '',
+    location:         '',
+    email:            '',
+    phone:            '',
+    appointmentTime:  '',
+    availability:     '',
+    bookingIntent:    false,
+    completionPhrase: false,
+    rawTranscript:    []
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     RUNTIME STATE
+  ═══════════════════════════════════════════════════════════════ */
+  let vapi                 = null;
+  let active               = false;
+  let finishing            = false;
+  let connectingTimer      = null;
+  let backendSyncTimer     = null;
+  let assistantContextSent = false;
+  const statusEl           = document.querySelector('.status');
+  const hintTextEl         = document.getElementById('hintText');
+  const orbBtn             = document.getElementById('orbBtn');
+
+  /* ═══════════════════════════════════════════════════════════════
+     UI HELPERS
+  ═══════════════════════════════════════════════════════════════ */
+  function setState(state) {
+    document.body.classList.remove('connecting', 'listening', 'speaking', 'vol-med', 'vol-high');
+    if (state) document.body.classList.add(state);
+    if (orbBtn) orbBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  }
+
+  function setHintMessage(msg) {
+    if (hintTextEl) hintTextEl.textContent = msg || '';
+  }
+
+  function readableError(error) {
+    if (!error) return 'Unknown error.';
+    if (typeof error === 'string') return error;
+    return error.message || error.name || 'Unknown error.';
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LOCAL STORAGE HELPERS
+  ═══════════════════════════════════════════════════════════════ */
+  function readJsonStorage(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.warn('Could not parse localStorage:', key, e);
+      return null;
+    }
+  }
+
+  function getStoredContext() {
+    const questionnaire = readJsonStorage('nexusQuestionnaireAnswers');
+    const homepageEmail = localStorage.getItem('aria_booking_email') || '';
+    return { homepageEmail, questionnaire: questionnaire || null };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LEAD SYNC (Netlify -> Google Sheets)
+  ═══════════════════════════════════════════════════════════════ */
+  function buildSheetPayload(reason) {
+    const context = getStoredContext();
+    const answers = context.questionnaire && context.questionnaire.answers
+      ? context.questionnaire.answers
+      : {};
+    return {
+      sessionId: bookingLead.sessionId || '',
+      eventType: reason || '',
+      occurredAt: new Date().toISOString(),
+      page: window.location.pathname || '',
+      name: bookingLead.name || answers.name || '',
+      businessName: bookingLead.businessName || answers.biz || '',
+      location: bookingLead.location || '',
+      email: bookingLead.email || context.homepageEmail || '',
+      phone: bookingLead.phone || '',
+      appointmentTime: bookingLead.appointmentTime || '',
+      availability: bookingLead.availability || '',
+      bookingIntent: bookingLead.bookingIntent ? 'Yes' : 'No',
+      completionPhrase: bookingLead.completionPhrase ? 'Yes' : 'No',
+      questionnaireName: answers.name || '',
+      questionnaireBusinessType: answers.biz || '',
+      questionnaireService: answers.service || '',
+      questionnairePain: answers.pain || '',
+      questionnaireSpend: answers.spend || '',
+      transcript: bookingLead.rawTranscript
+        .map((t) => `[${String(t.role || 'unknown').toUpperCase()}] ${String(t.text || '')}`)
+        .join(' | '),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  async function syncToSheets(reason, options) {
+    const payload = buildSheetPayload(reason);
+    const body = JSON.stringify(payload);
+
+    /* ── sendBeacon path (tab close / pagehide) ── */
+    if (options && options.preferBeacon && navigator.sendBeacon) {
+      const blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
+      const sent = navigator.sendBeacon(ARIA_SHEETS_WEBHOOK_URL, blob);
+      if (!sent) {
+        /* Beacon queue full — fall through to fetch */
+        console.warn('ARIA: sendBeacon failed, falling back to fetch');
+      } else {
+        return;
+      }
+    }
+
+    /* ── Standard fetch path ── */
+    try {
+      await fetch(ARIA_SHEETS_WEBHOOK_URL, {
+        method:  'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body,
+        keepalive: Boolean(options && options.keepalive)
+      });
+      console.info('ARIA: Lead synced to Sheets —', reason);
+    } catch (e) {
+      console.warn('ARIA: Sheets sync failed (non-blocking):', e.message);
+    }
+  }
+
+  function scheduleSheetSync(reason) {
+    clearTimeout(backendSyncTimer);
+    /* Debounce rapid transcript events — fire once per ~600 ms */
+    backendSyncTimer = setTimeout(() => { syncToSheets(reason); }, 600);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ASSISTANT CONTEXT INJECTION
+  ═══════════════════════════════════════════════════════════════ */
+  function buildAssistantContextMessage() {
+    const context = getStoredContext();
+    const answers = context.questionnaire && context.questionnaire.answers
+      ? context.questionnaire.answers : {};
+    const parts = [];
+    if (context.homepageEmail) parts.push('Homepage email: ' + context.homepageEmail);
+    if (answers.name)    parts.push('Name: '             + answers.name);
+    if (answers.biz)     parts.push('Business type: '    + answers.biz);
+    if (answers.service) parts.push('Primary service: '  + answers.service);
+    if (answers.pain)    parts.push('Lead challenge: '   + answers.pain);
+    if (answers.spend)   parts.push('Lead spend: '       + answers.spend);
+    if (!parts.length)   return '';
+    return 'Context captured before the voice call. Use it naturally and do not ask the user to repeat it unless needed: ' + parts.join(' | ');
+  }
+
+  function sendAssistantContextIfAvailable() {
+    if (!vapi || assistantContextSent) return;
+    const msg = buildAssistantContextMessage();
+    if (!msg) return;
+    assistantContextSent = true;
+    try {
+      vapi.send({ type: 'add-message', message: { role: 'system', content: msg } });
+    } catch (e) {
+      assistantContextSent = false;
+      console.warn('Could not send assistant context, will retry:', e);
+      setTimeout(sendAssistantContextIfAvailable, 800);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     VAPI INSTANCE
+  ═══════════════════════════════════════════════════════════════ */
+  function ensureVapiInstance() {
+    if (!window.isSecureContext) {
+      throw new Error('Microphone access requires HTTPS or localhost.');
+    }
+    if (typeof Vapi !== 'function') {
+      throw new Error(
+        'Vapi web SDK failed to load. Check your network connection or ad-blocker.'
+      );
+    }
+    if (!vapi) {
+      vapi = new Vapi(VAPI_KEY);
+      bindVapiEvents();
+    }
+    return vapi;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ORB CLICK — MIC PERMISSION + CALL START
+     1. User taps orb
+     2. toggleCall() → startCall()
+     3. startCall() calls ensureVapiInstance() (creates Vapi once)
+     4. vapi.start() triggers browser mic permission prompt automatically
+     5. On grant → call-start event fires → setState('listening')
+  ═══════════════════════════════════════════════════════════════ */
+  async function toggleCall(event) {
+    if (event) event.stopPropagation();
+    active ? endCall() : await startCall();
+  }
+
+  async function startCall() {
+    if (!VAPI_KEY) {
+      setHintMessage('VAPI_KEY is not configured. Contact support.');
+      console.error('ARIA: VAPI_KEY is empty. Set it in the script config block.');
+      return;
+    }
+
+    try {
+      setState('connecting');
+      setHintMessage('Allow microphone access when your browser asks…');
+
+      /*
+        Connection timeout guard — if call-start hasn't fired within 12 s,
+        bail out gracefully so the user isn't stuck on a spinning orb.
+      */
+      connectingTimer = setTimeout(() => {
+        if (!active) {
+          console.warn('ARIA: connection timed out after 12 s');
+          setState('');
+          setHintMessage('Connection timed out — tap the orb to try again');
+          if (vapi) { try { vapi.stop(); } catch (_) {} }
+        }
+      }, 12000);
+
+      ensureVapiInstance();
+
+      /*
+        ASSISTANT_ID (dashboard) takes priority.
+        Falls back to INLINE_ASSISTANT object if ASSISTANT_ID is blank.
+        Using a dashboard assistant is recommended — lets you update
+        the prompt and voice without redeploying this HTML file.
+      */
+      await vapi.start(ASSISTANT_ID || INLINE_ASSISTANT);
+
+    } catch (error) {
+      clearTimeout(connectingTimer);
+      const message = readableError(error);
+      console.error('Vapi start failed:', error);
+      active = false;
+      setState('');
+      setHintMessage('Could not start — check browser console for details');
+      alert('ARIA could not start: ' + message);
+    }
+  }
+
+  function endCall() {
+    if (vapi) {
+      try { vapi.stop(); } catch (e) { console.warn('vapi.stop() error:', e); }
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     VAPI EVENT BINDINGS
+  ═══════════════════════════════════════════════════════════════ */
+  function bindVapiEvents() {
+
+    vapi.on('call-start', () => {
+      clearTimeout(connectingTimer);
+      active    = true;
+      finishing = false;
+      setState('listening');
+      setHintMessage('Speak naturally and ARIA will guide the booking');
+      sendAssistantContextIfAvailable();
+      syncToSheets('call-start');
+    });
+
+    vapi.on('call-end', () => {
+      clearTimeout(connectingTimer);
+      active = false;
+      setState('');
+      setHintMessage('Click the orb to activate mic permission and start your guided demo');
+      saveLeadSnapshot();
+      syncToSheets(
+        finishing ? 'completion' : 'call-end',
+        { keepalive: true, preferBeacon: true }
+      );
+      if (finishing) goToNextStep();
+    });
+
+    vapi.on('speech-start', () => { setState('speaking'); });
+    vapi.on('speech-end',   () => { setState('listening'); });
+
+    vapi.on('volume-level', (vol) => {
+      document.body.classList.remove('vol-med', 'vol-high');
+      if (vol > 0.6)       document.body.classList.add('vol-high');
+      else if (vol > 0.25) document.body.classList.add('vol-med');
+    });
+
+    /*
+      MESSAGE ROUTING
+      ─────────────────────────────────────────────────────────────
+      transcript + transcriptType 'partial' → live preview ONLY — never stored
+      transcript + transcriptType 'final'   → stored + field detection + sheet sync ✓
+      assistant / bot type                  → treated as assistant final turn ✓
+    */
+    vapi.on('message', (message) => {
+      if (!message) return;
+
+      const msgType        = message.type || '';
+      const transcriptType = message.transcriptType || message.transcript_type || '';
+
+      if (msgType === 'transcript') {
+        if (transcriptType === 'final') {
+          handleFinalTranscript(message);
+        }
+        /* Skip partials — mid-sentence noise only */
+        return;
+      }
+
+      /* Some Vapi SDK versions surface the assistant reply as type:'assistant' */
+      if (msgType === 'assistant' || msgType === 'bot') {
+        handleFinalTranscript(message);
+      }
+    });
+
+    vapi.on('error', (error) => {
+      clearTimeout(connectingTimer);
+      console.error('Vapi error:', error);
+      active = false;
+      setState('');
+      setHintMessage('Something went wrong — check the browser console');
+      syncToSheets('call-error');
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     TRANSCRIPT PROCESSING  (final turns only)
+  ═══════════════════════════════════════════════════════════════ */
+  function handleFinalTranscript(message) {
+    const text = extractMessageText(message);
+    if (!text) return;
+
+    const rawRole = message.role || message.type || '';
+    const role    = rawRole.match(/user/i)               ? 'user'
+                  : rawRole.match(/assistant|bot|aria/i) ? 'assistant'
+                  : rawRole || 'unknown';
+
+    bookingLead.rawTranscript.push({
+      at:   new Date().toISOString(),
+      role,
+      text
+    });
+
+    detectLeadFields(text, role);
+    scheduleSheetSync('transcript-update');
+
+    /*
+      Only check the "we are all set" phrase on ARIA's turns.
+      A user saying it for any other reason won't accidentally end the call.
+    */
+    if (role === 'assistant' && /\bwe are all set\b/i.test(text)) {
+      finishing = true;
+      bookingLead.completionPhrase = true;
+      saveLeadSnapshot();
+      syncToSheets('completion');
+      setTimeout(() => {
+        if (vapi && active) vapi.stop();
+        else goToNextStep();
+      }, 1200);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     TEXT EXTRACTION — normalised across Vapi SDK versions
+  ═══════════════════════════════════════════════════════════════ */
+  function extractMessageText(message) {
+    if (!message) return '';
+    return String(
+      message.transcript || message.text || message.content || message.message || ''
+    ).trim();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LEAD FIELD DETECTION
+     Fields tracked: name, business, location, email, phone,
+     appointment time, availability, booking intent
+  ═══════════════════════════════════════════════════════════════ */
+  function detectLeadFields(text, role) {
+
+    /* EMAIL */
+    const email = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
+    if (email) bookingLead.email = email[0];
+
+    /* PHONE — 10-digit US and international variants */
+    const phone = text.match(
+      /(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/
+    );
+    if (phone && !bookingLead.phone) bookingLead.phone = phone[0].trim();
+
+    /* NAME */
+    if (!bookingLead.name) {
+      const nameWithPrefix = text.match(
+        /(?:my name is|i am|i'm|i go by|this is|it'?s|call me)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i
+      );
+      if (nameWithPrefix) {
+        bookingLead.name = cleanValue(nameWithPrefix[1]);
+      } else if (role === 'user') {
+        /* Bare first [last] name on short user turns (< 40 chars) */
+        const bareNamePattern = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
+        if (bareNamePattern && text.length < 40) {
+          bookingLead.name = cleanValue(bareNamePattern[1]);
+        }
+      }
+    }
+
+    /* BUSINESS NAME */
+    if (!bookingLead.businessName) {
+      const biz = text.match(
+        /(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i
+      );
+      if (biz) bookingLead.businessName = cleanValue(biz[1]);
+    }
+
+    /* LOCATION */
+    if (!bookingLead.location) {
+      const loc = text.match(
+        /(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i
+      );
+      if (loc) bookingLead.location = cleanValue(loc[1]);
+    }
+
+    /* APPOINTMENT TIME */
+    if (!bookingLead.appointmentTime) {
+      const timePattern = text.match(
+        /(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?) (?:at|on|for|a[t]?)?\s*((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next week|\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening)[^,.!?]{0,40})/i
+      );
+      if (timePattern) bookingLead.appointmentTime = cleanValue(timePattern[1]);
+    }
+
+    /* AVAILABILITY — broader statements */
+    if (!bookingLead.availability) {
+      const availPattern = text.match(
+        /\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i
+      );
+      if (availPattern) bookingLead.availability = cleanValue((availPattern[1] + availPattern[2]).trim());
+    }
+
+    /* BOOKING INTENT */
+    if (!bookingLead.bookingIntent) {
+      bookingLead.bookingIntent = /\b(book|booking|appointment|schedule|calendar|call|consultation|meeting|slot)\b/i.test(text);
+    }
+
+    saveLeadSnapshot();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     HELPERS
+  ═══════════════════════════════════════════════════════════════ */
+  function cleanValue(value) {
+    return value
+      .replace(/\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i, '')
+      .replace(/[.!?,]+$/, '')
+      .trim();
+  }
+
+  function saveLeadSnapshot() {
+    try {
+      localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead));
+    } catch (e) { console.warn('Could not save lead snapshot:', e); }
+  }
+
+  function goToNextStep() {
+    window.location.href = NEXT_STEP_URL;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     PAGE INIT
+  ═══════════════════════════════════════════════════════════════ */
+  window.addEventListener('DOMContentLoaded', () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.body.classList.add('page-ready');
+    }));
+
+    /* Warn early if the Vapi SDK was blocked by an ad-blocker or CSP */
+    setTimeout(() => {
+      if (typeof Vapi !== 'function') {
+        console.error(
+          'ARIA WARNING: Vapi SDK did not load from CDN. ' +
+          'Check for network errors, ad-blockers, or CSP headers.'
+        );
+        setHintMessage('Voice SDK blocked — try disabling extensions');
+      }
+    }, 3000);
+
+    console.info('ARIA: lead sync target is', ARIA_SHEETS_WEBHOOK_URL);
+  });
+
+  /* Persist lead + sync to Sheets when tab closes or navigates away */
+  window.addEventListener('pagehide', () => {
+    saveLeadSnapshot();
+    syncToSheets(
+      active ? 'pagehide-active-call' : 'pagehide',
+      { preferBeacon: true }
+    );
+  });
+</script>
+</body>
+</html>

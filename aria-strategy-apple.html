@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aria — Book Your Strategy Call</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue:       #0071e3;
+  --blue-hover: #0077ed;
+  --text-primary:   #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary:  #86868b;
+  --border:     #d2d2d7;
+  --bg:         #f5f5f7;
+  --card-bg:    #ffffff;
+  --left-bg:    #f5f5f7;
+  --check:      #0071e3;
+  --step-num:   #0071e3;
+}
+
+body {
+  font-family: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
+}
+
+/* ── CARD ── */
+.card {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  width: 100%;
+  max-width: 920px;
+  background: var(--card-bg);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.06),
+    0 12px 40px rgba(0,0,0,0.10);
+}
+
+/* ── LEFT PANEL ── */
+.left {
+  background: var(--left-bg);
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  border-right: 1px solid var(--border);
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.logo-mark svg { width: 26px; height: 26px; display: block; }
+.logo-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+/* Aria visual */
+.aria-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.loader-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 180px;
+  font-family: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 1.2em;
+  font-weight: 400;
+  color: #0071e3;
+  border-radius: 50%;
+  background-color: transparent;
+  user-select: none;
+  letter-spacing: 0.04em;
+  filter: drop-shadow(0 16px 40px rgba(0,113,227,0.2));
+}
+
+.loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background-color: transparent;
+  animation: loader-rotate 2s linear infinite;
+  z-index: 0;
+}
+
+@keyframes loader-rotate {
+  0% {
+    transform: rotate(90deg);
+    box-shadow:
+      0 10px 20px 0 rgba(255,255,255,0.95) inset,
+      0 20px 30px 0 rgba(96,179,255,0.75) inset,
+      0 60px 60px 0 rgba(0,113,227,0.95) inset;
+  }
+  50% {
+    transform: rotate(270deg);
+    box-shadow:
+      0 10px 20px 0 rgba(255,255,255,0.90) inset,
+      0 20px 10px 0 rgba(0,160,255,0.70) inset,
+      0 40px 60px 0 rgba(0,74,173,0.95) inset;
+  }
+  100% {
+    transform: rotate(450deg);
+    box-shadow:
+      0 10px 20px 0 rgba(255,255,255,0.95) inset,
+      0 20px 30px 0 rgba(96,179,255,0.75) inset,
+      0 60px 60px 0 rgba(0,113,227,0.95) inset;
+  }
+}
+
+.loader-letter {
+  display: inline-block;
+  opacity: 0.45;
+  transform: translateY(0);
+  animation: loader-letter-anim 2s infinite;
+  z-index: 1;
+  border-radius: 50ch;
+  border: none;
+}
+
+.loader-letter:nth-child(1) { animation-delay: 0s; }
+.loader-letter:nth-child(2) { animation-delay: 0.15s; }
+.loader-letter:nth-child(3) { animation-delay: 0.30s; }
+.loader-letter:nth-child(4) { animation-delay: 0.45s; }
+
+@keyframes loader-letter-anim {
+  0%, 100% { opacity: 0.45; transform: translateY(0); }
+  20%       { opacity: 1;    transform: scale(1.15); }
+  40%       { opacity: 0.7;  transform: translateY(0); }
+}
+
+/* Why card */
+.why-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+}
+.why-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.why-badge {
+  width: 22px; height: 22px;
+  background: rgba(0,113,227,0.09);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: var(--blue);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.why-head span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+.why-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ── RIGHT PANEL ── */
+.right {
+  padding: 40px 40px 36px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.plan-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.plan-name {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.plan-sub {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 24px;
+}
+
+.price-block {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+.price-num {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -2px;
+  line-height: 1;
+}
+.price-label {
+  font-size: 15px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin-bottom: 24px;
+}
+
+/* Steps card */
+.steps-card {
+  background: #f9f9fb;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 24px;
+}
+.steps-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.1px;
+  margin-bottom: 16px;
+}
+.after-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.after-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.step-num {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-copy {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.step-copy strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.steps-note {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.steps-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Features */
+.features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.check-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.check-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.feat-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+.feat-text strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.feat-note {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: block;
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+/* Trust line */
+.trust-line {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+.trust-line strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Button */
+.btn-reserve {
+  display: block;
+  width: 100%;
+  padding: 15px 28px;
+  border-radius: 980px;
+  border: none;
+  background: var(--blue);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: -0.2px;
+  transition: background 0.15s;
+  -webkit-font-smoothing: antialiased;
+}
+.btn-reserve:hover { background: var(--blue-hover); }
+.btn-reserve:active { background: #005bbf; }
+
+.secure {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  letter-spacing: 0;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  .card {
+    grid-template-columns: 1fr;
+    border-radius: 16px;
+  }
+  .left {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    gap: 24px;
+    padding: 32px 28px;
+  }
+  .aria-visual { flex-direction: row; gap: 16px; }
+  .right { padding: 32px 28px 28px; }
+  .plan-name { font-size: 22px; }
+  .price-num { font-size: 40px; }
+}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- LEFT -->
+  <div class="left">
+    <a class="logo" href="#">
+      <div class="logo-mark">
+        <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 21 L13 6 L23 21" stroke="#0071e3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 21 L13 13 L18 21" stroke="#60b3ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="logo-name">Aria</span>
+    </a>
+
+    <div class="aria-visual">
+      <div class="loader-wrapper">
+        <span class="loader-letter">A</span>
+        <span class="loader-letter">R</span>
+        <span class="loader-letter">I</span>
+        <span class="loader-letter">A</span>
+        <div class="loader"></div>
+      </div>
+    </div>
+
+    <div class="why-card">
+      <div class="why-head">
+        <div class="why-badge">?</div>
+        <span>Why $197 today?</span>
+      </div>
+      <p class="why-body">The $197 strategy call is your first safe step. We review your business, brand, website, lead flow, and booking gaps — so you know exactly what system would help you convert more visitors into appointments. No blind commitment, just a clear plan first.</p>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <p class="plan-eyebrow">Strategy Session</p>
+    <h1 class="plan-name">Aria Strategy Call</h1>
+    <p class="plan-sub">A focused session to map your personalized booking system, brand direction, and client-conversion plan — before you commit to a full build.</p>
+
+    <div class="price-block">
+      <span class="price-num">$197</span>
+      <span class="price-label">/ session</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <ul class="features">
+      <li>
+        <span class="check-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="7.5" fill="rgba(0,113,227,0.1)" stroke="none"/>
+            <path d="M4.5 8.5 L7 11 L11.5 5.5" stroke="#0071e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="feat-text">Private strategy call reserved
+          <span class="feat-note">Uncover where leads are lost and what needs to change</span>
+        </span>
+      </li>
+      <li>
+        <span class="check-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="7.5" fill="rgba(0,113,227,0.1)"/>
+            <path d="M4.5 8.5 L7 11 L11.5 5.5" stroke="#0071e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="feat-text">Personalized brand and conversion direction
+          <span class="feat-note">Map the look, voice, trust signals, and steps your prospects need</span>
+        </span>
+      </li>
+      <li>
+        <span class="check-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="7.5" fill="rgba(0,113,227,0.1)"/>
+            <path d="M4.5 8.5 L7 11 L11.5 5.5" stroke="#0071e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="feat-text">Clear Aria booking-system roadmap
+          <span class="feat-note">Leave knowing what to automate, capture, and why it matters</span>
+        </span>
+      </li>
+      <li>
+        <span class="check-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="7.5" fill="rgba(0,113,227,0.1)"/>
+            <path d="M4.5 8.5 L7 11 L11.5 5.5" stroke="#0071e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="feat-text">No-pressure build recommendation
+          <span class="feat-note">If it's not the right fit, we tell you clearly</span>
+        </span>
+      </li>
+      <li>
+        <span class="check-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="7.5" fill="rgba(0,113,227,0.1)"/>
+            <path d="M4.5 8.5 L7 11 L11.5 5.5" stroke="#0071e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="feat-text"><strong>$197 credited toward your full build</strong> if you move forward</span>
+      </li>
+      <li>
+        <span class="check-icon">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="7.5" fill="rgba(0,113,227,0.1)"/>
+            <path d="M4.5 8.5 L7 11 L11.5 5.5" stroke="#0071e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="feat-text"><strong>$99/mo optional support plan</strong> — only after launch
+          <span class="feat-note">Updates, optimization, and support only when your system is live</span>
+        </span>
+      </li>
+    </ul>
+
+    <p class="trust-line"><strong>Simple next step:</strong> reserve the call, get your plan, then choose whether the full build makes sense. No hidden commitment.</p>
+
+    <button class="btn-reserve">Reserve My Strategy Call — $197</button>
+    <p class="secure">Secure checkout · Clear next steps · Strategy-first, no pressure</p>
+  </div>
+
+</div>
+
+<script>
+  const STRATEGY_CALL_CHECKOUT_URL = 'https://buy.stripe.com/7sY3cu7lk2uJ8fKda5bQY12';
+
+  document.querySelector('.btn-reserve').addEventListener('click', () => {
+    if (STRATEGY_CALL_CHECKOUT_URL && !STRATEGY_CALL_CHECKOUT_URL.includes('YOUR_STRIPE')) {
+      window.location.href = STRATEGY_CALL_CHECKOUT_URL;
+      return;
+    }
+    window.location.href = 'mailto:info@nexusluma.com?subject=Book%20My%20%24197%20Aria%20Strategy%20Call&body=Hi%20Nexus%20Luma%2C%20I%20want%20to%20book%20my%20%24197%20Aria%20strategy%20call.';
+  });
+</script>
+</body>
+</html>
