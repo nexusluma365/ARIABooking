@@ -488,7 +488,10 @@
   const VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';  // Vapi public web key
   const ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';  // Vapi dashboard assistant ID
   const NEXT_STEP_URL = 'aria-strategy-apple.html';
-  const VAPI_SDK_URL = 'https://esm.sh/@vapi-ai/web@2';
+  const VAPI_SDK_URLS = [
+    'https://esm.sh/@vapi-ai/web@2?bundle',
+    'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
+  ];
 
   /* Google Apps Script Web App endpoint — Sheet ID: 1wX6MoaHPzz5-sDpe_X0INsX4-d-BgqrwjpF5vibuJD8 */
   const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
@@ -629,14 +632,16 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   let vapi                 = null;
   let active               = false;
+  let starting             = false;
   let finishing            = false;
   let connectingTimer      = null;
   let backendSyncTimer     = null;
   let assistantContextSent = false;
   let completionRedirectTimer = null;
+  let lastTranscriptKey = '';
 
-  /* Redirect only after ARIA says the exact closeout phrase. */
-  const COMPLETION_PHRASE_REGEX = /\bwe are all set\b/i;
+  /* Redirect after ARIA says a closeout phrase. */
+  const COMPLETION_PHRASE_REGEX = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon|take care)\b/i;
   const COMPLETION_REDIRECT_DELAY_MS = 1600;
 
   const statusEl      = document.querySelector('.status');
@@ -920,15 +925,34 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      VAPI INSTANCE
   ═══════════════════════════════════════════════════════════════ */
   let VapiConstructor = null;
+  let vapiLoadPromise = null;
 
   async function getVapiConstructor() {
     if (VapiConstructor) return VapiConstructor;
 
-    const module = await import(VAPI_SDK_URL);
-    VapiConstructor = module.default || module.Vapi;
-    if (typeof VapiConstructor !== 'function') {
-      throw new Error('Vapi web SDK loaded, but no constructor was exported.');
+    if (!vapiLoadPromise) {
+      vapiLoadPromise = (async () => {
+        const errors = [];
+
+        for (const url of VAPI_SDK_URLS) {
+          try {
+            const module = await import(url);
+            const Constructor = module.default || module.Vapi;
+            if (typeof Constructor === 'function') {
+              console.info('ARIA: Vapi SDK loaded from', url);
+              return Constructor;
+            }
+            errors.push(`${url}: constructor export missing`);
+          } catch (error) {
+            errors.push(`${url}: ${readableError(error)}`);
+          }
+        }
+
+        throw new Error('Vapi web SDK could not load. ' + errors.join(' | '));
+      })();
     }
+
+    VapiConstructor = await vapiLoadPromise;
     return VapiConstructor;
   }
 
@@ -949,8 +973,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   async function toggleCall(event) {
     if (event) event.stopPropagation();
-    active ? endCall() : await startCall();
+    (active || starting) ? endCall() : await startCall();
   }
+
+  window.toggleCall = toggleCall;
 
   async function startCall() {
     if (!VAPI_KEY) {
@@ -960,20 +986,22 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }
 
     try {
+      starting = true;
       setState('connecting');
       setHintMessage('Allow microphone access when your browser asks…');
 
       /*
-        Connection timeout guard — bail after 10 s so user isn't stuck.
+        Connection timeout guard — bail after 20 s so user isn't stuck.
       */
       connectingTimer = setTimeout(() => {
         if (!active) {
-          console.warn('ARIA: connection timed out after 10 s');
+          console.warn('ARIA: connection timed out after 20 s');
+          starting = false;
           setState('');
           setHintMessage('Connection timed out — tap the orb to try again');
           if (vapi) { try { vapi.stop(); } catch (_) {} }
         }
-      }, 10000);
+      }, 20000);
 
       await ensureVapiInstance();
 
@@ -1021,6 +1049,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       const message = readableError(error);
       console.error('Vapi start failed:', error);
       active = false;
+      starting = false;
       setState('');
       setHintMessage('Could not start — check browser console for details');
       alert('ARIA could not start: ' + message);
@@ -1028,6 +1057,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function endCall() {
+    starting = false;
     if (vapi) {
       try { vapi.stop(); } catch (e) { console.warn('vapi.stop() error:', e); }
     }
@@ -1040,6 +1070,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     vapi.on('call-start', () => {
       clearTimeout(connectingTimer);
+      starting = false;
       active    = true;
       finishing = false;
       clearTimeout(completionRedirectTimer);
@@ -1051,6 +1082,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     vapi.on('call-end', () => {
       clearTimeout(connectingTimer);
+      starting = false;
       active = false;
       removeThinking();
       finalizePartialTranscript();
@@ -1095,11 +1127,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
       const msgType        = message.type || '';
       const transcriptType = message.transcriptType || message.transcript_type || '';
+      const role           = getMessageRole(message);
 
-      /* ── User transcript ── */
+      /* ── Transcript stream ── */
       if (msgType === 'transcript') {
 
         if (transcriptType === 'partial') {
+          if (role !== 'user') return;
           /* Show what the user is saying in real-time */
           const text = extractMessageText(message);
           if (text) updatePartialTranscript(text);
@@ -1110,14 +1144,20 @@ START: Greet them warmly and ask their name. Nothing else yet.`
           const text = extractMessageText(message);
           if (text) {
             finalizePartialTranscript();           /* Lock the partial bubble */
-            /* Replace the partial with a clean final bubble */
-            const last = transcriptEl && transcriptEl.lastElementChild;
-            if (last && last.classList.contains('user') && !last.classList.contains('partial')) {
-              last.textContent = text.trim();      /* Update in-place */
+
+            if (role === 'assistant') {
+              removeThinking();
+              appendChatMessage('aria', text);
             } else {
-              appendChatMessage('user', text);
+              /* Replace the partial with a clean final bubble */
+              const last = transcriptEl && transcriptEl.lastElementChild;
+              if (last && last.classList.contains('user') && !last.classList.contains('partial')) {
+                last.textContent = text.trim();      /* Update in-place */
+              } else {
+                appendChatMessage('user', text);
+              }
+              showThinking();                        /* Show thinking dots while ARIA processes */
             }
-            showThinking();                        /* Show thinking dots while ARIA processes */
           }
           handleFinalTranscript(message);
           return;
@@ -1130,6 +1170,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         const text = extractMessageText(message);
         if (text) appendChatMessage('aria', text);
         handleFinalTranscript(message);
+        return;
+      }
+
+      if (msgType === 'conversation-update') {
+        handleConversationUpdate(message);
       }
     });
 
@@ -1137,6 +1182,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(connectingTimer);
       console.error('Vapi error:', error);
       active = false;
+      starting = false;
       removeThinking();
       setState('');
       setHintMessage('Something went wrong — check the browser console');
@@ -1151,10 +1197,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     const text = extractMessageText(message);
     if (!text) return;
 
-    const rawRole = message.role || message.type || '';
-    const role    = rawRole.match(/user/i)               ? 'user'
-                  : rawRole.match(/assistant|bot|aria/i) ? 'assistant'
-                  : rawRole || 'unknown';
+    const role = getMessageRole(message);
+    const transcriptKey = `${role}|${text}`;
+    if (transcriptKey === lastTranscriptKey) return;
+    lastTranscriptKey = transcriptKey;
 
     bookingLead.rawTranscript.push({
       at:   new Date().toISOString(),
@@ -1173,9 +1219,23 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }
   }
 
+  function handleConversationUpdate(message) {
+    const messages = Array.isArray(message.messages)
+      ? message.messages
+      : Array.isArray(message.conversation)
+        ? message.conversation
+        : [];
+
+    const lastAssistantMessage = [...messages].reverse().find((item) => {
+      return getMessageRole(item) === 'assistant' && extractMessageText(item);
+    });
+
+    if (lastAssistantMessage) handleFinalTranscript(lastAssistantMessage);
+  }
+
   /* ═══════════════════════════════════════════════════════════════
      COMPLETION FLOW — close call + advance to paywall
-     Only runs after ARIA says: "We are all set."
+     Runs after ARIA says a configured closeout phrase.
   ═══════════════════════════════════════════════════════════════ */
   function finishConversationAndAdvance() {
     if (finishing) return;
@@ -1191,11 +1251,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (vapi && active) {
         try { vapi.stop(); } catch (e) {
           console.warn('Could not stop Vapi before redirect:', e);
-          goToNextStep();
         }
-      } else {
-        goToNextStep();
       }
+      goToNextStep();
     }, COMPLETION_REDIRECT_DELAY_MS);
   }
 
@@ -1288,9 +1346,22 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function extractMessageText(message) {
     if (!message) return '';
+    if (Array.isArray(message.content)) {
+      return message.content
+        .map((part) => typeof part === 'string' ? part : (part.text || part.content || ''))
+        .join(' ')
+        .trim();
+    }
     return String(
       message.transcript || message.text || message.content || message.message || ''
     ).trim();
+  }
+
+  function getMessageRole(message) {
+    const rawRole = String((message && (message.role || message.type || message.speaker)) || '');
+    if (rawRole.match(/user|customer|human/i)) return 'user';
+    if (rawRole.match(/assistant|bot|aria|ai/i)) return 'assistant';
+    return rawRole || 'unknown';
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1420,6 +1491,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     requestAnimationFrame(() => requestAnimationFrame(() => {
       document.body.classList.add('page-ready');
     }));
+
+    getVapiConstructor().catch((error) => {
+      console.error('ARIA WARNING: Vapi SDK preload failed:', error);
+    });
 
     setTimeout(() => {
       if (!VapiConstructor) {
