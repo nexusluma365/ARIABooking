@@ -768,9 +768,24 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function getStoredContext() {
+    /*
+      The Warm Leads questionnaire (Sheet: 16Lpm5EM2oPkT56ddo6VrQirOHSCU6TJYEF4hIwpQtLM)
+      stores a FLAT payload: { sessionId, name, email, challenge, contactProcess,
+      aiHelp, systemStatus, completed, updatedAt }.
+      There is NO .answers nesting — read fields directly off the object.
+    */
     const questionnaire = readJsonStorage('nexusQuestionnaireAnswers');
     const homepageEmail = localStorage.getItem('aria_booking_email') || '';
-    return { homepageEmail, questionnaire: questionnaire || null };
+
+    /* Normalise: support both flat (new) and old nested .answers shape */
+    let flat = null;
+    if (questionnaire) {
+      flat = questionnaire.answers
+        ? { ...questionnaire.answers, sessionId: questionnaire.sessionId }
+        : questionnaire;   /* already flat */
+    }
+
+    return { homepageEmail, questionnaire: flat };
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -778,28 +793,26 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function buildSheetPayload(reason) {
     const context = getStoredContext();
-    const answers = context.questionnaire && context.questionnaire.answers
-      ? context.questionnaire.answers
-      : {};
+    const q = context.questionnaire || {};   /* flat Warm Leads schema */
     return {
-      sessionId: bookingLead.sessionId || '',
-      eventType: reason || '',
-      occurredAt: new Date().toISOString(),
-      page: window.location.pathname || '',
-      name: bookingLead.name || answers.name || '',
-      businessName: bookingLead.businessName || answers.biz || '',
-      location: bookingLead.location || '',
-      email: bookingLead.email || context.homepageEmail || '',
-      phone: bookingLead.phone || '',
-      appointmentTime: bookingLead.appointmentTime || '',
-      availability: bookingLead.availability || '',
-      bookingIntent: bookingLead.bookingIntent ? 'Yes' : 'No',
-      completionPhrase: bookingLead.completionPhrase ? 'Yes' : 'No',
-      questionnaireName: answers.name || '',
-      questionnaireBusinessType: answers.biz || '',
-      questionnaireService: bookingLead.service || answers.service || '',
-      questionnairePain: bookingLead.pain || answers.pain || '',
-      questionnaireSpend: bookingLead.spend || answers.spend || '',
+      sessionId:                 bookingLead.sessionId || '',
+      eventType:                 reason || '',
+      occurredAt:                new Date().toISOString(),
+      page:                      window.location.pathname || '',
+      name:                      bookingLead.name || q.name || '',
+      businessName:              bookingLead.businessName || '',
+      location:                  bookingLead.location || '',
+      email:                     bookingLead.email || q.email || context.homepageEmail || '',
+      phone:                     bookingLead.phone || '',
+      appointmentTime:           bookingLead.appointmentTime || '',
+      availability:              bookingLead.availability || '',
+      bookingIntent:             bookingLead.bookingIntent ? 'Yes' : 'No',
+      completionPhrase:          bookingLead.completionPhrase ? 'Yes' : 'No',
+      questionnaireName:         q.name || '',
+      questionnaireBusinessType: '',   /* not in Warm Leads schema; collected by voice */
+      questionnaireService:      bookingLead.service || q.aiHelp || '',
+      questionnairePain:         bookingLead.pain    || q.challenge || '',
+      questionnaireSpend:        bookingLead.spend   || '',
       transcript: bookingLead.rawTranscript
         .map((t) => `[${String(t.role || 'unknown').toUpperCase()}] ${String(t.text || '')}`)
         .join(' | '),
@@ -844,36 +857,64 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     ASSISTANT CONTEXT INJECTION
+     ASSISTANT CONTEXT — built BEFORE vapi.start(), not mid-call
   ═══════════════════════════════════════════════════════════════ */
-  function buildAssistantContextMessage() {
-    const context = getStoredContext();
-    const answers = context.questionnaire && context.questionnaire.answers
-      ? context.questionnaire.answers : {};
-    const parts = [];
-    if (context.homepageEmail) parts.push('Homepage email: ' + context.homepageEmail);
-    if (answers.name)    parts.push('Name: '             + answers.name);
-    if (answers.biz)     parts.push('Business type: '    + answers.biz);
-    if (answers.service) parts.push('Primary service: '  + answers.service);
-    if (answers.pain)    parts.push('Lead challenge: '   + answers.pain);
-    if (answers.spend)   parts.push('Lead spend: '       + answers.spend);
-    if (!parts.length)   return '';
-    return 'Context captured before the voice call. Use it naturally — do not ask the user to repeat info you already know: ' + parts.join(' | ');
+
+  /**
+   * Pull the user's first name from any available source.
+   * Priority: voice-collected > questionnaire flat > homepage email prefix
+   */
+  function getLeadName() {
+    if (bookingLead.name) return bookingLead.name;
+    const ctx = getStoredContext();
+    const q = ctx.questionnaire;
+    if (q && q.name) return q.name.trim().split(/\s+/)[0];  /* first name only */
+    return '';
   }
 
-  function sendAssistantContextIfAvailable() {
-    if (!vapi || assistantContextSent) return;
-    const msg = buildAssistantContextMessage();
-    if (!msg) return;
-    assistantContextSent = true;
-    try {
-      vapi.send({ type: 'add-message', message: { role: 'system', content: msg } });
-    } catch (e) {
-      assistantContextSent = false;
-      console.warn('Could not send assistant context, will retry:', e);
-      setTimeout(sendAssistantContextIfAvailable, 800);
-    }
+  /**
+   * Build the system context string to inject BEFORE the call starts.
+   * Reads the flat Warm Leads questionnaire schema:
+   *   name, email, challenge, contactProcess, aiHelp, systemStatus
+   */
+  function buildAssistantContextMessage() {
+    const context = getStoredContext();
+    const q = context.questionnaire || {};
+    const parts = [];
+
+    /* Name — flat field from Warm Leads GAS */
+    const name = q.name || '';
+    if (name) parts.push('User\'s name: ' + name);
+
+    /* Email — flat field, also check homepage */
+    const email = q.email || context.homepageEmail || '';
+    if (email) parts.push('User\'s email: ' + email);
+
+    /* Challenge — maps to questionnairePain */
+    if (q.challenge) parts.push('Their challenge: ' + q.challenge);
+
+    /* aiHelp — maps to questionnaireService */
+    if (q.aiHelp) parts.push('What AI help they want: ' + q.aiHelp);
+
+    /* contactProcess & systemStatus — bonus context */
+    if (q.contactProcess) parts.push('Contact process: ' + q.contactProcess);
+    if (q.systemStatus)   parts.push('Current system: '  + q.systemStatus);
+
+    if (!parts.length) return '';
+
+    return (
+      'IMPORTANT — context captured from the user\'s questionnaire before this call. ' +
+      'You already know this information — do NOT ask for it again. ' +
+      'Use their name naturally from the first word. Details: ' +
+      parts.join(' | ')
+    );
   }
+
+  /**
+   * Removed: sendAssistantContextIfAvailable() via vapi.send() mid-call.
+   * Injecting a message while ARIA speaks her firstMessage cuts the audio.
+   * Context is now baked into ASSISTANT_OVERRIDES.model.messages in startCall().
+   */
 
   /* ═══════════════════════════════════════════════════════════════
      VAPI INSTANCE
@@ -937,14 +978,42 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       await ensureVapiInstance();
 
       /*
-        ASSISTANT_ID (dashboard) takes priority and receives ASSISTANT_OVERRIDES
-        to reduce latency without touching the dashboard config.
-        Falls back to INLINE_ASSISTANT if ASSISTANT_ID is blank.
+        Build context once, inject it into the overrides BEFORE vapi.start().
+        This avoids the mid-stream vapi.send() that was cutting ARIA's greeting.
+        If a name is known from the questionnaire, personalise the firstMessage too.
       */
+      const contextMsg  = buildAssistantContextMessage();
+      const knownName   = getLeadName();
+
+      /* Clone overrides so we don't mutate the shared object between calls */
+      const overrides = JSON.parse(JSON.stringify(ASSISTANT_OVERRIDES));
+
+      if (contextMsg) {
+        overrides.model = overrides.model || {};
+        overrides.model.messages = [{ role: 'system', content: contextMsg }];
+      }
+
+      if (knownName) {
+        /* Personalised opener — skips asking for name since we already know it */
+        overrides.firstMessage =
+          `Hey ${knownName}! I'm ARIA from Nexus Luma — I saw your questionnaire. ` +
+          `Ready to get your strategy call booked?`;
+      }
+
       if (ASSISTANT_ID) {
-        await vapi.start(ASSISTANT_ID, ASSISTANT_OVERRIDES);
+        await vapi.start(ASSISTANT_ID, overrides);
       } else {
-        await vapi.start(INLINE_ASSISTANT);
+        /* Inline assistant — merge overrides in */
+        const inline = JSON.parse(JSON.stringify(INLINE_ASSISTANT));
+        if (contextMsg) {
+          inline.model.messages.unshift({ role: 'system', content: contextMsg });
+        }
+        if (knownName) {
+          inline.firstMessage =
+            `Hey ${knownName}! I'm ARIA from Nexus Luma — I saw your questionnaire. ` +
+            `Ready to get your strategy call booked?`;
+        }
+        await vapi.start(inline);
       }
 
     } catch (error) {
@@ -976,7 +1045,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(completionRedirectTimer);
       setState('listening');
       setHintMessage('Speak naturally — ARIA will guide you');
-      sendAssistantContextIfAvailable();
+      /* Context is already baked into overrides before vapi.start() — no mid-call injection needed */
       syncToSheets('call-start');
     });
 
