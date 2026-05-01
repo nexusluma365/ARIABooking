@@ -497,34 +497,34 @@
   const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
 
   /* ═══════════════════════════════════════════════════════════════
-     PERFORMANCE OVERRIDES
-     Applied on top of the dashboard assistant to reduce latency.
+     CONVERSATION TIMING OVERRIDES
+     Applied on top of the dashboard assistant to favor complete user turns.
      ─────────────────────────────────────────────────────────────
      AssemblyAI Universal-Streaming has built-in end-of-turn detection
      and is confirmed compatible with this Vapi key.
-     Confidence threshold raised to 0.5 for cleaner turn boundaries.
+     These values intentionally trade a little latency for better listening.
      Smart denoising filters ambient noise before transcription.
   ═══════════════════════════════════════════════════════════════ */
   const ASSISTANT_OVERRIDES = {
     transcriber: {
       provider:                         'assembly-ai',
       language:                         'en',
-      endOfTurnConfidenceThreshold:     0.5,   /* higher = cleaner turn cuts */
-      minEndOfTurnSilenceWhenConfident: 400,   /* ms — let user finish thought */
-      maxTurnSilence:                   1200   /* ms — generous pause buffer  */
+      endOfTurnConfidenceThreshold:     0.75,  /* higher = wait for a clearer endpoint */
+      minEndOfTurnSilenceWhenConfident: 1100,  /* ms — allow natural thinking pauses */
+      maxTurnSilence:                   4500   /* ms — do not cut off longer answers */
     },
     startSpeakingPlan: {
-      waitSeconds: 0.3,
+      waitSeconds: 0.8,
       transcriptionEndpointingPlan: {
-        onPunctuationSeconds:   0.15,
-        onNoPunctuationSeconds: 1.0,
-        onNumberSeconds:        1.0
+        onPunctuationSeconds:   0.75,
+        onNoPunctuationSeconds: 2.4,
+        onNumberSeconds:        2.8
       }
     },
     stopSpeakingPlan: {
-      numWords:       0,
-      voiceSeconds:   0.2,
-      backoffSeconds: 0.4
+      numWords:       2,
+      voiceSeconds:   0.7,
+      backoffSeconds: 1.0
     },
     backgroundSpeechDenoisingPlan: {
       smartDenoisingPlan: { enabled: true }
@@ -551,9 +551,9 @@
     transcriber: {
       provider:                         'assembly-ai',
       language:                         'en',
-      endOfTurnConfidenceThreshold:     0.5,
-      minEndOfTurnSilenceWhenConfident: 400,
-      maxTurnSilence:                   1200
+      endOfTurnConfidenceThreshold:     ASSISTANT_OVERRIDES.transcriber.endOfTurnConfidenceThreshold,
+      minEndOfTurnSilenceWhenConfident: ASSISTANT_OVERRIDES.transcriber.minEndOfTurnSilenceWhenConfident,
+      maxTurnSilence:                   ASSISTANT_OVERRIDES.transcriber.maxTurnSilence
     },
     model: {
       provider:    'openai',
@@ -641,7 +641,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   let lastTranscriptKey = '';
 
   /* Redirect after ARIA says a closeout phrase. */
-  const COMPLETION_PHRASE_REGEX = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon|take care)\b/i;
+  const COMPLETION_PHRASE_REGEX = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
+  const TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
   const COMPLETION_REDIRECT_DELAY_MS = 1600;
 
   const statusEl      = document.querySelector('.status');
@@ -1214,9 +1215,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     /*
       Only trigger completion on ARIA's turns.
     */
-    if (role === 'assistant' && COMPLETION_PHRASE_REGEX.test(text)) {
+    if (role === 'assistant' && isCompletionPhrase(text)) {
       finishConversationAndAdvance();
     }
+  }
+
+  function isCompletionPhrase(text) {
+    if (COMPLETION_PHRASE_REGEX.test(text)) return true;
+    return TAKE_CARE_CLOSEOUT_REGEX.test(text) && !/\btake care\s+of\b/i.test(text);
   }
 
   function handleConversationUpdate(message) {
