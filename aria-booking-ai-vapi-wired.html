@@ -497,24 +497,43 @@
      PERFORMANCE OVERRIDES
      Applied on top of the dashboard assistant to reduce latency.
      ─────────────────────────────────────────────────────────────
-     startSpeakingPlan.waitSeconds  — how long after the user stops
-       talking before ARIA begins responding. 0.1 s = near-instant.
-     smartEndpointingEnabled        — AI-based turn detection so ARIA
-       doesn't cut off mid-sentence but also doesn't wait too long.
-     backgroundDenoisingEnabled     — cleaner audio = faster accurate
-       transcription.
+     AssemblyAI Universal-Streaming improves recognition and has
+     built-in end-of-turn detection, so ARIA hears cleaner user turns.
+     waitSeconds trims the final delay after the model and voice are ready.
+     Smart denoising filters ambient noise before transcription.
   ═══════════════════════════════════════════════════════════════ */
   const ASSISTANT_OVERRIDES = {
+    transcriber: {
+      provider: 'assembly-ai',
+      language: 'en',
+      endOfTurnConfidenceThreshold: 0.4,
+      minEndOfTurnSilenceWhenConfident: 300,
+      maxTurnSilence: 1000
+    },
     startSpeakingPlan: {
-      waitSeconds: 0.1,
-      smartEndpointingEnabled: true
+      waitSeconds: 0.2,
+      transcriptionEndpointingPlan: {
+        onPunctuationSeconds: 0.1,
+        onNoPunctuationSeconds: 0.8,
+        onNumberSeconds: 0.8
+      }
     },
     stopSpeakingPlan: {
-      numWords: 2,
+      numWords: 0,
       voiceSeconds: 0.2,
-      backoffSeconds: 0.5
+      backoffSeconds: 0.35
     },
-    backgroundDenoisingEnabled: true
+    backgroundSpeechDenoisingPlan: {
+      smartDenoisingPlan: {
+        enabled: true
+      }
+    },
+    model: {
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      temperature: 0.25,
+      maxTokens: 90
+    }
   };
 
   /* ═══════════════════════════════════════════════════════════════
@@ -529,16 +548,17 @@
   const INLINE_ASSISTANT = {
     name: 'ARIA',
     transcriber: {
-      provider: 'deepgram',
-      model: 'nova-3',
-      language: 'en-US',
-      endpointing: 200      /* ms of silence before treating utterance as done */
+      provider: 'assembly-ai',
+      language: 'en',
+      endOfTurnConfidenceThreshold: 0.4,
+      minEndOfTurnSilenceWhenConfident: 300,
+      maxTurnSilence: 1000
     },
     model: {
       provider: 'openai',
       model: 'gpt-4o-mini',
       temperature: 0.3,
-      maxTokens: 120,       /* Short replies = faster TTS + more conversational */
+      maxTokens: 90,        /* Short replies = faster TTS + more conversational */
       messages: [{
         role: 'system',
         content: `You are ARIA — a sharp, warm AI booking specialist for Nexus Luma. You talk like a real person: natural, confident, never robotic.
@@ -566,6 +586,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       similarityBoost: 0.8,
       optimizeStreamingLatency: 4       /* 0-4 — highest latency optimization */
     },
+    startSpeakingPlan: ASSISTANT_OVERRIDES.startSpeakingPlan,
+    stopSpeakingPlan: ASSISTANT_OVERRIDES.stopSpeakingPlan,
+    backgroundSpeechDenoisingPlan: ASSISTANT_OVERRIDES.backgroundSpeechDenoisingPlan,
     firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
 
