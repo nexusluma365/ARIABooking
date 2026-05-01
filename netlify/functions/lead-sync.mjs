@@ -12,13 +12,23 @@ function shouldAppend(eventType) {
   return ["call-end", "completion", "pagehide-active-call", "call-error", "questionnaire-complete"].includes(eventType);
 }
 
+async function readPayload(request) {
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return request.json();
+  }
+
+  const text = await request.text();
+  return text ? JSON.parse(text) : {};
+}
+
 export default async (request) => {
   if (request.method !== "POST") {
     return json(405, { error: "Method not allowed." });
   }
 
   try {
-    const payload = await request.json();
+    const payload = await readPayload(request);
     const secret = process.env.LEAD_SYNC_SECRET;
     const requestSecret = request.headers.get("x-lead-sync-secret");
 

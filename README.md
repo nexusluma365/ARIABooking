@@ -54,7 +54,7 @@ Before this works:
 3. Share the target spreadsheet with the service account email as an editor
 4. Put the credentials into Netlify environment variables
 
-Default sheet range is `Leads!A:N`.
+Default sheet range is `Leads!A:O`.
 
 Suggested columns:
 
