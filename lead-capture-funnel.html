@@ -522,68 +522,44 @@
     overflow: hidden;
     background: #0a0f1a;
     z-index: 1;
+    cursor: pointer;
     box-shadow:
       0 0 0 1px rgba(186, 230, 253, 0.5),
       0 0 38px rgba(56, 189, 248, 0.52),
       0 24px 64px rgba(14, 165, 233, 0.34),
       0 36px 88px rgba(2, 6, 23, 0.52);
   }
-  .video-bg {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse at 30% 40%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
-      linear-gradient(135deg, #0a0f1a 0%, #1a2332 100%);
+  .aria-video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #0a0f1a;
   }
-  .video-overlay-text {
-    position: absolute;
-    bottom: 22%;
-    left: 0; right: 0;
-    text-align: center;
-    color: white;
-    font-size: clamp(18px, 2.4vw, 30px);
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-shadow: 0 0 30px rgba(56, 189, 248, 0.8), 0 0 8px rgba(255,255,255,0.4);
-  }
-  .play-btn {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 84px; height: 64px;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: transform 0.25s ease, background 0.25s ease;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-  }
-  .play-btn:hover { transform: translate(-50%, -50%) scale(1.06); background: rgba(0, 0, 0, 0.7); }
-  .play-btn svg { width: 22px; height: 22px; color: white; }
-  .video-controls {
-    position: absolute;
-    bottom: 12px; right: 12px;
-    display: flex; align-items: center; gap: 12px;
-    color: rgba(255,255,255,0.7);
-    font-size: 11px;
-  }
-  .video-controls svg { width: 14px; height: 14px; }
-  .video-corner {
-    position: absolute;
-    bottom: 12px; left: 12px;
-    color: rgba(255,255,255,0.7);
-  }
-  .video-mute {
+  .video-audio-toggle {
     position: absolute;
     top: 14px; right: 14px;
-    width: 34px; height: 34px;
-    background: rgba(0,0,0,0.5);
-    border-radius: 50%;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 11px;
+    background: rgba(0, 0, 0, 0.56);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center;
+    gap: 7px;
     color: white;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    pointer-events: none;
+    z-index: 3;
   }
-  .video-mute svg { width: 14px; height: 14px; }
+  .video-audio-toggle svg { width: 15px; height: 15px; flex: 0 0 auto; }
+  .video-audio-toggle .audio-on { display: none; }
+  .video-wrap.audio-on .video-audio-toggle .audio-on { display: inline; }
+  .video-wrap.audio-on .video-audio-toggle .audio-off { display: none; }
 
   @media (max-width: 980px) {
     .hero {
@@ -653,9 +629,6 @@
     }
     .video-stage {
       padding: 14px;
-    }
-    .video-controls {
-      gap: 8px;
     }
   }
 
@@ -1350,34 +1323,20 @@
           <div class="video-col">
             <div class="video-stage">
             <div class="video-wrap">
-              <div class="video-bg"></div>
-
-              <div class="video-mute">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                  <line x1="23" y1="9" x2="17" y2="15"/>
-                  <line x1="17" y1="9" x2="23" y2="15"/>
+              <video class="aria-video" src="Aria Boking Bear.mp4" autoplay muted loop playsinline preload="auto" aria-label="Aria booking bear demo video"></video>
+              <div class="video-audio-toggle" aria-hidden="true">
+                <svg class="audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <line x1="23" y1="9" x2="17" y2="15"></line>
+                  <line x1="17" y1="9" x2="23" y2="15"></line>
                 </svg>
-              </div>
-
-              <div class="play-btn">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="6 4 20 12 6 20 6 4"/>
+                <svg class="audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
                 </svg>
-              </div>
-
-              <div class="video-overlay-text">INTRODUCING ARIA</div>
-
-              <div class="video-corner">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="6 4 20 12 6 20 6 4"/>
-                </svg>
-              </div>
-
-              <div class="video-controls">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                <span style="font-style: italic; font-weight: 600; opacity: 0.6;">wistia</span>
+                <span class="audio-off">Muted</span>
+                <span class="audio-on">Sound on</span>
               </div>
             </div>
           </div>
@@ -1558,6 +1517,28 @@
 
   requestAnimationFrame(() => {
     document.body.classList.add('page-loaded');
+  });
+
+  document.querySelectorAll('.video-wrap').forEach((wrap) => {
+    const video = wrap.querySelector('.aria-video');
+    if (!video) return;
+
+    const syncAudioState = () => {
+      wrap.classList.toggle('audio-on', !video.muted);
+    };
+
+    video.muted = true;
+    video.play().catch(() => {});
+    syncAudioState();
+
+    wrap.addEventListener('click', () => {
+      video.muted = !video.muted;
+      if (!video.paused) {
+        syncAudioState();
+        return;
+      }
+      video.play().finally(syncAudioState).catch(syncAudioState);
+    });
   });
 
   if (!prefersReducedMotion) {
