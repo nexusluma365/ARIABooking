@@ -288,11 +288,11 @@
      Keywords are plain strings; boosting is handled inside Vapi dashboard.
   ────────────────────────────────────────────────────────────────── */
   var TRANSCRIBER_CONFIG = {
-    provider: 'deepgram',
-    model: 'nova-2',
-    language: 'en',
+    provider:    'deepgram',
+    model:       'nova-2-general',
+    language:    'en-US',
     smartFormat: true,
-    endpointing: 300
+    endpointing: 100
   };
 
   /* ─────────────────────────────────────────────────────────────────
@@ -301,18 +301,18 @@
      against Vapi's schema; no 400 risk.
   ────────────────────────────────────────────────────────────────── */
   var SPEAKING_PLAN_CONFIG = {
-    waitSeconds: 0.4,
+    waitSeconds: 0.2,
     transcriptionEndpointingPlan: {
-      onPunctuationSeconds:  0.4,
-      onNoPunctuationSeconds: 1.6,
-      onNumberSeconds: 1.8
+      onPunctuationSeconds:   0.3,
+      onNoPunctuationSeconds: 1.2,
+      onNumberSeconds:        1.4
     }
   };
 
   var STOP_SPEAKING_PLAN_CONFIG = {
-    numWords: 2,
-    voiceSeconds: 0.3,
-    backoffSeconds: 0.6
+    numWords:       2,
+    voiceSeconds:   0.2,
+    backoffSeconds: 0.4
   };
 
   /* ─────────────────────────────────────────────────────────────────
@@ -322,6 +322,7 @@
      These two plans alone deliver the full latency improvement.
   ────────────────────────────────────────────────────────────────── */
   var ASSISTANT_OVERRIDES = {
+    transcriber:       TRANSCRIBER_CONFIG,
     startSpeakingPlan: SPEAKING_PLAN_CONFIG,
     stopSpeakingPlan:  STOP_SPEAKING_PLAN_CONFIG
   };
@@ -696,9 +697,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     });
 
     vapi.on('speech-start', function() { removeThinking(); setState('speaking'); });
-    vapi.on('speech-end',   function() {
+    vapi.on('speech-end', function() {
       setState('listening');
+      /* Immediate unmute — mic opens the moment ARIA stops */
       ensureMicUnmuted('speech-end');
+      /* VAD settle unmute — Vapi's voice-activity detector takes ~80ms
+         to re-arm after playback ends. A second call at that window
+         closes the gap that made ARIA feel like she wasn't listening.
+         This is the "always listening" fix.                           */
+      setTimeout(function() { if (active && !document.body.classList.contains('speaking')) ensureMicUnmuted('vad-settle'); }, 90);
       scheduleMicWatchdog();
     });
 
