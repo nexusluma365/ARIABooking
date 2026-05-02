@@ -298,18 +298,17 @@
      SPEAKING / STOP-SPEAKING PLANS
   ───────────────────────────────────────────────────────────── */
   var SPEAKING_PLAN_CONFIG = {
-    waitSeconds: 0.2,
-    transcriptionEndpointingPlan: {
-      onPunctuationSeconds:   0.3,
-      onNoPunctuationSeconds: 1.2,
-      onNumberSeconds:        1.4
+    waitSeconds: 0.3,
+    smartEndpointingPlan: {
+      provider: 'livekit',
+      waitFunction: '2000 / (1 + exp(-10 * (x - 0.5)))'
     }
   };
 
   var STOP_SPEAKING_PLAN_CONFIG = {
-    numWords:       2,
-    voiceSeconds:   0.2,
-    backoffSeconds: 0.4
+    numWords:       0,
+    voiceSeconds:   0.15,
+    backoffSeconds: 0.8
   };
 
   /* ─────────────────────────────────────────────────────────────
@@ -626,10 +625,17 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   function buildContextFirstMessage() {
     var firstName = getLeadName();
     var email = getKnownEmail();
-    if (firstName && email) return 'Hey ' + firstName + ', I have your name and email from the previous step. I have ' + (bookingLead.name || firstName) + ' and ' + email + '. Is that still correct?';
+    if (firstName && email) return 'Hey ' + firstName + ', I have ' + email + ' from the last step. Is that correct?';
     if (firstName) return 'Hey ' + firstName + ', I have your name from the previous step. Is that still correct?';
     if (email) return 'Hey, I have your email from the previous step as ' + email + '. Is that still correct?';
     return '';
+  }
+
+  function addLowLatencyOverrides(overrides) {
+    var target = overrides || {};
+    target.startSpeakingPlan = SPEAKING_PLAN_CONFIG;
+    target.stopSpeakingPlan = STOP_SPEAKING_PLAN_CONFIG;
+    return target;
   }
 
   function buildPrefilledAssistantOverrides(contextMsg) {
@@ -683,7 +689,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       variableValues: variableValues
     };
     if (firstMessage) overrides.firstMessage = firstMessage;
-    return overrides;
+    return addLowLatencyOverrides(overrides);
   }
 
   function startSavedAssistant(overrides) {
@@ -756,7 +762,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (!VAPI_KEY) { setHintMessage('VAPI_KEY is not configured. Contact support.'); console.error('ARIA: VAPI_KEY is empty.'); return; }
     hydrateLeadFromStoredContext();
     starting = true; callEndHandled = false; redirectStarted = false; setState('connecting');
-    setHintMessage('Allow microphone access when your browser asks\u2026');
+    setHintMessage('Allow microphone access, then wait for ARIA to say hello\u2026');
     connectingTimer = setTimeout(function() {
       if (!active) { console.warn('ARIA: connection timed out after 20 s'); starting=false; setState(''); setHintMessage('Connection timed out \u2014 tap the orb to try again'); if (vapi) { try { vapi.stop(); } catch(_) {} } }
     }, 20000);
@@ -767,7 +773,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var useInline = FORCE_INLINE_ASSISTANT || !ASSISTANT_ID;
 
       if (ASSISTANT_ID && !useInline) {
-        return startSavedAssistant(buildPrefilledAssistantOverrides(contextMsg));
+        return startSavedAssistant(buildPrefilledAssistantOverrides(contextMsg) || addLowLatencyOverrides());
 
       } else {
         /* Inline assistant remains available only as an explicit fallback. */
@@ -849,7 +855,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       callEndHandled=false; redirectStarted=false; recoverableErrorCount=0;
       lastTranscriptKey=''; lastConvUpdateKey='';
       clearTimeout(completionRedirectTimer);
-      setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
+      setState('listening'); setHintMessage('ARIA is live \u2014 speak naturally');
       ensureMicUnmuted('call-start');
       injectAssistantContextIfSupported();
       scheduleMicWatchdog();
