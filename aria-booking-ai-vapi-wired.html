@@ -1123,7 +1123,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
 
       if (ASSISTANT_ID) {
-        return vapi.start(ASSISTANT_ID, overrides);
+        return startDashboardAssistant(overrides);
       } else {
         /* FIX #13: context pushed AFTER persona prompt (not unshifted before it),
            so the main role definition always takes precedence for the model. */
@@ -1138,11 +1138,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         }
         return vapi.start(inline);
       }
-    }).then(function(call) {
-      if (!call) {
-        throw new Error('Vapi did not return a web call. Check the public key, assistant ID, and assistant overrides in the Vapi dashboard.');
-      }
-      return call;
     }).catch(function(error) {
       clearTimeout(connectingTimer);
       var message = readableError(error);
@@ -1157,6 +1152,33 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       setHintMessage('Could not start \u2014 check browser console for details');
       /* Use alert() only as last resort — avoids silent failures */
       alert('ARIA could not start: ' + message);
+    });
+  }
+
+  function startDashboardAssistant(overrides) {
+    return vapi.start(ASSISTANT_ID, overrides).then(function(call) {
+      if (call) return call;
+
+      console.warn(
+        'ARIA: Vapi returned no web call with browser overrides. ' +
+        'Retrying with the dashboard assistant only.'
+      );
+
+      if (vapi) {
+        try { vapi.stop(); } catch (_) {}
+      }
+      vapi = null;
+
+      return ensureVapiInstance().then(function() {
+        return vapi.start(ASSISTANT_ID);
+      }).then(function(retryCall) {
+        if (retryCall) return retryCall;
+        throw new Error(
+          'Vapi did not return a web call even without browser overrides. ' +
+          'Check that the public key and assistant ID belong to the same Vapi project, ' +
+          'and confirm the assistant is enabled for web calls.'
+        );
+      });
     });
   }
 
