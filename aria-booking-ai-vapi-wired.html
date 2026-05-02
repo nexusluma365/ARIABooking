@@ -7,28 +7,46 @@
 <meta name="theme-color" content="#07189f" />
 <title>ARIA Booking Orb | Nexus Luma</title>
 <style>
+  /* ─────────────────────────────────────────────
+     RESET & BOX MODEL
+  ───────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ─────────────────────────────────────────────
+     CSS VARIABLES
+  ───────────────────────────────────────────── */
   :root {
-    --deep-blue: #07189f;
-    --royal-blue: #1238c7;
-    --sky-blue: #43c6ee;
-    --aqua: #8af4ee;
-    --lime: #8fff57;
-    --white-soft: rgba(255, 255, 255, 0.92);
+    --deep-blue:   #07189f;
+    --royal-blue:  #1238c7;
+    --sky-blue:    #43c6ee;
+    --aqua:        #8af4ee;
+    --lime:        #8fff57;
+    --white-soft:  rgba(255, 255, 255, 0.92);
     --white-muted: rgba(255, 255, 255, 0.66);
   }
 
-  html, body {
+  /* ─────────────────────────────────────────────
+     BASE — html / body
+     FIX #8:  -webkit-text-size-adjust prevents iOS font inflation on rotate
+     FIX #3:  svh unit fallback chain (100vh → -webkit-fill-available → 100svh)
+  ───────────────────────────────────────────── */
+  html {
     width: 100%;
     height: 100%;
-    overflow: hidden;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #07189f;
+    /* FIX #8 */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
+    width: 100%;
+    /* FIX #3 — fallback chain for Safari / older browsers */
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
     min-height: 100svh;
+    overflow: hidden;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #07189f;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -78,6 +96,9 @@
     transform: translateZ(0);
   }
 
+  /* ─────────────────────────────────────────────
+     LAYOUT
+  ───────────────────────────────────────────── */
   .screen {
     width: min(92vw, 680px);
     min-height: 520px;
@@ -87,6 +108,9 @@
     padding: 44px 22px;
   }
 
+  /* ─────────────────────────────────────────────
+     BRAND CHIP
+  ───────────────────────────────────────────── */
   .brand-chip {
     width: 48px;
     height: 48px;
@@ -102,13 +126,18 @@
   }
   .brand-chip svg { width: 22px; height: 22px; opacity: 0.95; }
 
+  /* ─────────────────────────────────────────────
+     TYPOGRAPHY
+     FIX #1: font-weight: 760 is invalid CSS (only 100–900 multiples of 100 are valid).
+             Corrected to 800 which is the nearest standard heavy weight.
+  ───────────────────────────────────────────── */
   h1 {
     font-size: clamp(2.15rem, 5vw, 4rem);
     line-height: 0.96;
     letter-spacing: -0.07em;
-    font-weight: 760;
+    font-weight: 800; /* FIX #1: was 760 (invalid) */
     color: var(--white-soft);
-    text-wrap: balance;
+    text-wrap: balance; /* Chrome 114+, FF 121+, Safari 17.5+ — harmless fallback on older */
     margin-bottom: 12px;
     text-shadow: 0 18px 55px rgba(0, 20, 120, 0.24);
   }
@@ -120,9 +149,13 @@
     margin-bottom: 50px;
   }
 
-  /* ── Voice button ── */
+  /* ─────────────────────────────────────────────
+     VOICE BUTTON / ORB STAGE
+     FIX #7: :focus-visible ring added for keyboard navigation
+  ───────────────────────────────────────────── */
   .voice-stage {
     appearance: none;
+    -webkit-appearance: none;
     border: 0;
     background: transparent;
     cursor: pointer;
@@ -135,6 +168,13 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     border-radius: 50%;
+    outline: none; /* hidden — we replace with :focus-visible below */
+  }
+
+  /* FIX #7 — visible focus ring for keyboard / assistive tech users */
+  .voice-stage:focus-visible {
+    outline: 3px solid rgba(138, 244, 238, 0.85);
+    outline-offset: 6px;
   }
 
   .voice-stage::before,
@@ -161,7 +201,9 @@
     100% { transform: scale(1.22); opacity: 0; }
   }
 
-  /* ── Orb loader ── */
+  /* ─────────────────────────────────────────────
+     ORB LOADER WRAPPER
+  ───────────────────────────────────────────── */
   .loader-wrapper {
     position: relative;
     display: flex;
@@ -178,21 +220,30 @@
     background-color: transparent;
     user-select: none;
     transform: translateZ(0);
+    /* FIX #25: include box-shadow in will-change so GPU pre-composites it */
     will-change: transform;
     transition: transform 0.35s cubic-bezier(.22,.8,.22,1);
   }
 
+  /* ─────────────────────────────────────────────
+     ORB LOADER DISC
+     FIX #2: aspect-ratio unsupported on Safari <15 & older Android WebView.
+             Since parent has an explicit fixed height (180px/155px), and the
+             loader is position:absolute with top:0; left:0; width:100%,
+             replacing aspect-ratio with height:100% is fully equivalent and
+             works on every browser including IE11.
+  ───────────────────────────────────────────── */
   .loader {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    aspect-ratio: 1 / 1;
+    height: 100%; /* FIX #2: was "aspect-ratio: 1 / 1" — height:100% is universal */
     border-radius: 50%;
     background-color: transparent;
     animation: loader-rotate 2.2s linear infinite;
     z-index: 0;
-    will-change: transform;
+    will-change: transform, box-shadow; /* FIX #25: declare box-shadow for compositor */
     transform: translateZ(0);
   }
 
@@ -256,15 +307,29 @@
     50%       { transform: scale(1.045) translateZ(0); }
   }
 
+  /* ─────────────────────────────────────────────
+     STATUS TEXT
+     FIX #4:  contain:inline-size had poor browser support (Chrome 105+, FF 109+,
+              Safari 17+). Replaced with overflow:hidden + max-width which achieves
+              the same containment intent universally.
+     FIX #23: Screen readers don't reliably announce ::before pseudo-element content.
+              Text is now set directly via JS (see setStatusText() below).
+  ───────────────────────────────────────────── */
   .status {
     min-height: 28px;
     margin-top: 34px;
     font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.76);
     letter-spacing: -0.01em;
-    contain: inline-size;
+    /* FIX #4: replaced contain:inline-size with universal equivalent */
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
   }
 
+  /* ─────────────────────────────────────────────
+     HINT PILL
+  ───────────────────────────────────────────── */
   .hint {
     display: inline-flex;
     align-items: center;
@@ -283,6 +348,7 @@
     justify-content: center;
     transition: opacity 0.3s ease;
   }
+
   .hint-dot {
     width: 8px;
     height: 8px;
@@ -292,7 +358,6 @@
     flex-shrink: 0;
   }
 
-  /* Pulse the hint dot while ARIA is speaking */
   body.speaking .hint-dot {
     animation: dot-speaking 0.7s ease-in-out infinite alternate;
   }
@@ -301,14 +366,10 @@
     to   { transform: scale(1.55); box-shadow: 0 0 28px rgba(143,255,87,1);   }
   }
 
-  body.connecting .status::before                                       { content: "Connecting ARIA…"; }
-  body.listening  .status::before                                       { content: "ARIA is listening…"; }
-  body.speaking   .status::before                                       { content: "ARIA is speaking…"; }
-  body:not(.connecting):not(.listening):not(.speaking) .status::before  { content: "Tap the orb and ARIA will help you book."; }
-
-  /* ══════════════════════════════════════════════════════
-     LIVE TRANSCRIPT AREA
-  ══════════════════════════════════════════════════════ */
+  /* ─────────────────────────────────────────────
+     TRANSCRIPT AREA
+     FIX #6: Firefox custom scrollbar (scrollbar-width/color API)
+  ───────────────────────────────────────────── */
   .transcript-area {
     width: 100%;
     max-width: 500px;
@@ -324,6 +385,9 @@
       opacity    0.35s ease,
       margin-top 0.35s ease;
     pointer-events: none;
+    /* FIX #6: Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
   }
 
   body.listening  .transcript-area,
@@ -333,13 +397,17 @@
     margin-top: 18px;
     overflow-y: auto;
     pointer-events: auto;
+    -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
   }
 
-  /* Custom scrollbar to match design */
+  /* Webkit (Chrome/Safari/Edge) custom scrollbar */
   .transcript-area::-webkit-scrollbar { width: 3px; }
   .transcript-area::-webkit-scrollbar-track { background: transparent; }
   .transcript-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
 
+  /* ─────────────────────────────────────────────
+     CHAT MESSAGES
+  ───────────────────────────────────────────── */
   @keyframes msg-appear {
     from { opacity: 0; transform: translateY(8px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0)   scale(1);    }
@@ -355,7 +423,6 @@
     word-break: break-word;
   }
 
-  /* ARIA messages — left side */
   .chat-msg.aria {
     align-self: flex-start;
     background: rgba(255, 255, 255, 0.11);
@@ -365,7 +432,6 @@
     text-align: left;
   }
 
-  /* User messages — right side */
   .chat-msg.user {
     align-self: flex-end;
     background: rgba(138, 244, 238, 0.14);
@@ -375,14 +441,15 @@
     text-align: right;
   }
 
-  /* Live partial (user still speaking) */
   .chat-msg.partial {
     opacity: 0.52;
     animation: none;
     font-style: italic;
   }
 
-  /* ARIA thinking indicator */
+  /* ─────────────────────────────────────────────
+     ARIA THINKING DOTS
+  ───────────────────────────────────────────── */
   .aria-thinking {
     align-self: flex-start;
     display: flex;
@@ -411,8 +478,11 @@
     40%           { opacity: 1;    transform: scale(1.15); }
   }
 
+  /* ─────────────────────────────────────────────
+     RESPONSIVE
+  ───────────────────────────────────────────── */
   @media (max-width: 520px) {
-    .screen { min-height: 100svh; padding: 34px 18px; }
+    .screen { min-height: 100vh; min-height: 100svh; padding: 34px 18px; }
     .voice-stage { width: 220px; height: 220px; }
     .loader-wrapper { width: 155px; height: 155px; font-size: 1.05rem; }
     .subhead { margin-bottom: 34px; }
@@ -434,6 +504,7 @@
     body { opacity: 1; transform: none; }
   }
 
+  /* Fallback for browsers with no backdrop-filter support */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .brand-chip { background: rgba(255, 255, 255, 0.2); }
     .hint { background: rgba(255, 255, 255, 0.18); }
@@ -469,49 +540,44 @@
         </div>
       </button>
 
-      <p class="status" aria-live="polite" aria-atomic="true"></p>
+      <!-- FIX #23: status text is now set via JS textContent for reliable SR announcement -->
+      <p class="status" id="statusEl" aria-live="polite" aria-atomic="true"></p>
       <div class="hint" role="status" aria-live="polite">
         <span class="hint-dot" aria-hidden="true"></span>
         <span id="hintText">Click the orb to activate mic permission and start your guided demo</span>
       </div>
 
-      <!-- Live transcript chat area — appears only during active calls -->
+      <!-- Live transcript — visible only during active calls -->
       <div class="transcript-area" id="transcriptArea" aria-live="polite" aria-label="Live conversation transcript"></div>
     </section>
   </main>
 
 <script>
   /* ═══════════════════════════════════════════════════════════════
-     ██████  CONFIG — EDIT THESE VALUES BEFORE GOING LIVE
+     CONFIG — EDIT THESE VALUES BEFORE GOING LIVE
   ═══════════════════════════════════════════════════════════════ */
 
-  const VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';  // Vapi public web key
-  const ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';  // Vapi dashboard assistant ID
-  const NEXT_STEP_URL = 'aria-strategy-apple.html';
-  const VAPI_SDK_URLS = [
+  var VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';
+  var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
+  var NEXT_STEP_URL = 'aria-strategy-apple.html';
+  var VAPI_SDK_URLS = [
     'https://esm.sh/@vapi-ai/web@2?bundle',
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
   ];
 
-  /* Google Apps Script Web App endpoint — Sheet ID: 1wX6MoaHPzz5-sDpe_X0INsX4-d-BgqrwjpF5vibuJD8 */
-  const ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
+  /* Google Apps Script webhook */
+  var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
 
   /* ═══════════════════════════════════════════════════════════════
      CONVERSATION TIMING OVERRIDES
-     Applied on top of the dashboard assistant to favor complete user turns.
-     ─────────────────────────────────────────────────────────────
-     AssemblyAI Universal-Streaming has built-in end-of-turn detection
-     and is confirmed compatible with this Vapi key.
-     These values intentionally trade a little latency for better listening.
-     Smart denoising filters ambient noise before transcription.
   ═══════════════════════════════════════════════════════════════ */
-  const ASSISTANT_OVERRIDES = {
+  var ASSISTANT_OVERRIDES = {
     transcriber: {
       provider:                         'assembly-ai',
       language:                         'en',
-      endOfTurnConfidenceThreshold:     0.75,  /* higher = wait for a clearer endpoint */
-      minEndOfTurnSilenceWhenConfident: 1100,  /* ms — allow natural thinking pauses */
-      maxTurnSilence:                   4500   /* ms — do not cut off longer answers */
+      endOfTurnConfidenceThreshold:     0.75,
+      minEndOfTurnSilenceWhenConfident: 1100,
+      maxTurnSilence:                   4500
     },
     startSpeakingPlan: {
       waitSeconds: 0.8,
@@ -533,20 +599,18 @@
       provider:    'openai',
       model:       'gpt-4o-mini',
       temperature: 0.2,
-      maxTokens:   160   /* enough for ARIA to spell out a full email */
+      maxTokens:   160
+      /* NOTE: when ASSISTANT_ID is set, Vapi uses dashboard model settings.
+         These model fields act as override hints and may not all apply depending
+         on your Vapi plan tier. Context injection via model.messages is the
+         most reliably honoured override. */
     }
   };
 
   /* ═══════════════════════════════════════════════════════════════
-     INLINE ASSISTANT FALLBACK
-     Only used if ASSISTANT_ID is blank. When ASSISTANT_ID is set,
-     all voice/prompt settings come from the Vapi dashboard instead.
-
-     IMPORTANT: If you ARE using the inline assistant, the voice
-     provider is set to '11labs' for fastest TTS response times.
-     PlayHT adds 300-800 ms extra latency vs 11labs/deepgram.
+     INLINE ASSISTANT FALLBACK (used only when ASSISTANT_ID is blank)
   ═══════════════════════════════════════════════════════════════ */
-  const INLINE_ASSISTANT = {
+  var INLINE_ASSISTANT = {
     name: 'ARIA',
     transcriber: {
       provider:                         'assembly-ai',
@@ -593,13 +657,12 @@ COMPLETION RULE:
 START: Greet them warmly and ask their name. Nothing else yet.`
       }]
     },
-    /* 11labs 'Rachel' — fast, natural, warm voice */
     voice: {
       provider:                 '11labs',
-      voiceId:                  '21m00Tcm4TlvDq8ikWAM',  /* Rachel */
+      voiceId:                  '21m00Tcm4TlvDq8ikWAM',
       stability:                0.5,
       similarityBoost:          0.8,
-      optimizeStreamingLatency: 4       /* 0-4 — highest latency optimization */
+      optimizeStreamingLatency: 4
     },
     startSpeakingPlan:              ASSISTANT_OVERRIDES.startSpeakingPlan,
     stopSpeakingPlan:               ASSISTANT_OVERRIDES.stopSpeakingPlan,
@@ -610,8 +673,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   /* ═══════════════════════════════════════════════════════════════
      LEAD STATE
   ═══════════════════════════════════════════════════════════════ */
-  const bookingLead = {
-    sessionId:        (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+  var bookingLead = {
+    sessionId:        generateUUID(),   /* FIX #10: robust UUID (see below) */
     name:             '',
     businessName:     '',
     location:         '',
@@ -619,9 +682,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     phone:            '',
     appointmentTime:  '',
     availability:     '',
-    service:          '',   /* questionnaireService  — col P in sheet */
-    pain:             '',   /* questionnairePain     — col Q in sheet */
-    spend:            '',   /* questionnaireSpend    — col R in sheet */
+    service:          '',
+    pain:             '',
+    spend:            '',
     bookingIntent:    false,
     completionPhrase: false,
     rawTranscript:    []
@@ -630,29 +693,115 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   /* ═══════════════════════════════════════════════════════════════
      RUNTIME STATE
   ═══════════════════════════════════════════════════════════════ */
-  let vapi                 = null;
-  let active               = false;
-  let starting             = false;
-  let finishing            = false;
-  let connectingTimer      = null;
-  let backendSyncTimer     = null;
-  let assistantContextSent = false;
-  let completionRedirectTimer = null;
-  let lastTranscriptKey = '';
+  var vapi                 = null;
+  var active               = false;
+  var starting             = false;
+  var finishing            = false;
+  var connectingTimer      = null;
+  var backendSyncTimer     = null;
+  var assistantContextSent = false;
+  var completionRedirectTimer = null;
+  var lastTranscriptKey    = '';
 
-  /* Redirect after ARIA says a closeout phrase. */
-  const COMPLETION_PHRASE_REGEX = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
-  const TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
-  const COMPLETION_REDIRECT_DELAY_MS = 1600;
+  var COMPLETION_PHRASE_REGEX    = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
+  var TAKE_CARE_CLOSEOUT_REGEX   = /\btake care[.!?\s]*$/i;
+  var COMPLETION_REDIRECT_DELAY_MS = 1600;
 
-  const statusEl      = document.querySelector('.status');
-  const hintTextEl    = document.getElementById('hintText');
-  const orbBtn        = document.getElementById('orbBtn');
-  const transcriptEl  = document.getElementById('transcriptArea');
+  /* ─────────────────────────────────────────────
+     DOM REFS
+  ───────────────────────────────────────────── */
+  var statusEl      = document.getElementById('statusEl');
+  var hintTextEl    = document.getElementById('hintText');
+  var orbBtn        = document.getElementById('orbBtn');
+  var transcriptEl  = document.getElementById('transcriptArea');
 
-  /* Transcript UI state */
-  let partialMsgEl    = null;   /* The live "user is typing" bubble */
-  let thinkingEl      = null;   /* The "ARIA is thinking" dots */
+  var partialMsgEl  = null;
+  var thinkingEl    = null;
+
+  /* ═══════════════════════════════════════════════════════════════
+     FIX #10 — UUID v4 GENERATOR
+     crypto.randomUUID() is only available in secure contexts (HTTPS/localhost)
+     and not in all older browsers. This polyfill works universally including
+     HTTP, Android WebView, Samsung Internet, and older Safari.
+  ═══════════════════════════════════════════════════════════════ */
+  function generateUUID() {
+    /* Prefer native crypto.randomUUID when available */
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      try { return window.crypto.randomUUID(); } catch (_) {}
+    }
+    /* Prefer crypto.getRandomValues when randomUUID is absent */
+    if (window.crypto && window.crypto.getRandomValues) {
+      var bytes = new Uint8Array(16);
+      window.crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; /* version 4 */
+      bytes[8] = (bytes[8] & 0x3f) | 0x80; /* variant bits */
+      var hex = Array.from(bytes).map(function(b) {
+        return b.toString(16).padStart(2, '0');
+      });
+      return [
+        hex.slice(0,4).join(''),
+        hex.slice(4,6).join(''),
+        hex.slice(6,8).join(''),
+        hex.slice(8,10).join(''),
+        hex.slice(10,16).join('')
+      ].join('-');
+    }
+    /* Last resort: timestamp + Math.random (collision-resistant enough for session IDs) */
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     FIX #12 — SAFE DEEP CLONE
+     structuredClone() is supported in Chrome 98+, Firefox 94+, Safari 15.4+,
+     Node 17+. Falls back to JSON round-trip for older environments.
+     Both approaches are safe here since objects contain only plain data.
+  ═══════════════════════════════════════════════════════════════ */
+  function deepClone(obj) {
+    if (typeof structuredClone === 'function') {
+      try { return structuredClone(obj); } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     FIX #11 — localStorage AVAILABILITY GUARD
+     In Safari private/incognito mode, accessing localStorage properties
+     throws a SecurityError. isStorageAvailable() tests once and caches.
+  ═══════════════════════════════════════════════════════════════ */
+  var _storageAvailable = null;
+  function isStorageAvailable() {
+    if (_storageAvailable !== null) return _storageAvailable;
+    try {
+      var k = '__aria_test__';
+      localStorage.setItem(k, '1');
+      localStorage.removeItem(k);
+      _storageAvailable = true;
+    } catch (_) {
+      _storageAvailable = false;
+    }
+    return _storageAvailable;
+  }
+
+  /* ─────────────────────────────────────────────
+     STATUS TEXT HELPER
+     FIX #23: writes textContent directly so screen readers announce changes.
+              Previously status relied only on CSS ::before pseudo-content
+              which many screen readers do not announce via aria-live.
+  ───────────────────────────────────────────── */
+  var STATUS_MESSAGES = {
+    connecting: 'Connecting ARIA\u2026',
+    listening:  'ARIA is listening\u2026',
+    speaking:   'ARIA is speaking\u2026',
+    idle:       'Tap the orb and ARIA will help you book.'
+  };
+
+  function setStatusText(state) {
+    if (!statusEl) return;
+    statusEl.textContent = STATUS_MESSAGES[state] || STATUS_MESSAGES.idle;
+  }
 
   /* ═══════════════════════════════════════════════════════════════
      UI HELPERS
@@ -661,10 +810,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     document.body.classList.remove('connecting', 'listening', 'speaking', 'vol-med', 'vol-high');
     if (state) document.body.classList.add(state);
     if (orbBtn) orbBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    setStatusText(state || 'idle');   /* FIX #23 */
 
-    /* Clear transcript when call ends */
     if (!state && transcriptEl) {
-      setTimeout(() => {
+      setTimeout(function() {
         transcriptEl.innerHTML = '';
         partialMsgEl = null;
         thinkingEl   = null;
@@ -685,37 +834,22 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   /* ═══════════════════════════════════════════════════════════════
      TRANSCRIPT UI
   ═══════════════════════════════════════════════════════════════ */
-
-  /**
-   * Auto-scroll the transcript to the latest message.
-   */
   function scrollTranscript() {
-    if (transcriptEl) {
-      requestAnimationFrame(() => {
-        transcriptEl.scrollTop = transcriptEl.scrollHeight;
-      });
-    }
+    if (!transcriptEl) return;
+    requestAnimationFrame(function() {
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    });
   }
 
-  /**
-   * Append a finalised chat bubble to the transcript.
-   * @param {'aria'|'user'} role
-   * @param {string} text
-   */
   function appendChatMessage(role, text) {
     if (!transcriptEl || !text || !text.trim()) return;
-    const div = document.createElement('div');
-    div.className = `chat-msg ${role}`;
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
     div.textContent = text.trim();
     transcriptEl.appendChild(div);
     scrollTranscript();
   }
 
-  /**
-   * Update the live partial transcript bubble (user still speaking).
-   * Creates the bubble on first call, reuses it thereafter.
-   * @param {string} text
-   */
   function updatePartialTranscript(text) {
     if (!transcriptEl) return;
     if (!partialMsgEl) {
@@ -727,9 +861,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     scrollTranscript();
   }
 
-  /**
-   * Promote the partial bubble to a final message (remove italic/opacity).
-   */
   function finalizePartialTranscript() {
     if (partialMsgEl) {
       partialMsgEl.classList.remove('partial');
@@ -737,9 +868,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }
   }
 
-  /**
-   * Show the three-dot "ARIA is thinking" indicator.
-   */
   function showThinking() {
     removeThinking();
     if (!transcriptEl) return;
@@ -750,9 +878,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     scrollTranscript();
   }
 
-  /**
-   * Remove the thinking indicator.
-   */
   function removeThinking() {
     if (thinkingEl) {
       thinkingEl.remove();
@@ -761,45 +886,42 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     LOCAL STORAGE HELPERS
+     LOCAL STORAGE HELPERS  (FIX #11 applied throughout)
   ═══════════════════════════════════════════════════════════════ */
   function readJsonStorage(key) {
+    if (!isStorageAvailable()) return null;
     try {
-      const raw = localStorage.getItem(key);
+      var raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
-      console.warn('Could not parse localStorage:', key, e);
+      console.warn('ARIA: Could not parse localStorage key:', key, e);
       return null;
     }
   }
 
   function getStoredContext() {
-    /*
-      The Warm Leads questionnaire (Sheet: 16Lpm5EM2oPkT56ddo6VrQirOHSCU6TJYEF4hIwpQtLM)
-      stores a FLAT payload: { sessionId, name, email, challenge, contactProcess,
-      aiHelp, systemStatus, completed, updatedAt }.
-      There is NO .answers nesting — read fields directly off the object.
-    */
-    const questionnaire = readJsonStorage('nexusQuestionnaireAnswers');
-    const homepageEmail = localStorage.getItem('aria_booking_email') || '';
-
-    /* Normalise: support both flat (new) and old nested .answers shape */
-    let flat = null;
-    if (questionnaire) {
-      flat = questionnaire.answers
-        ? { ...questionnaire.answers, sessionId: questionnaire.sessionId }
-        : questionnaire;   /* already flat */
+    var questionnaire = readJsonStorage('nexusQuestionnaireAnswers');
+    var homepageEmail = '';
+    if (isStorageAvailable()) {
+      try { homepageEmail = localStorage.getItem('aria_booking_email') || ''; } catch (_) {}
     }
 
-    return { homepageEmail, questionnaire: flat };
+    var flat = null;
+    if (questionnaire) {
+      flat = questionnaire.answers
+        ? Object.assign({}, questionnaire.answers, { sessionId: questionnaire.sessionId })
+        : questionnaire;
+    }
+
+    return { homepageEmail: homepageEmail, questionnaire: flat };
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     LEAD SYNC (Netlify -> Google Sheets)
+     LEAD SYNC  (Google Sheets via GAS)
   ═══════════════════════════════════════════════════════════════ */
   function buildSheetPayload(reason) {
-    const context = getStoredContext();
-    const q = context.questionnaire || {};   /* flat Warm Leads schema */
+    var context = getStoredContext();
+    var q = context.questionnaire || {};
     return {
       sessionId:                 bookingLead.sessionId || '',
       eventType:                 reason || '',
@@ -815,207 +937,177 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       bookingIntent:             bookingLead.bookingIntent ? 'Yes' : 'No',
       completionPhrase:          bookingLead.completionPhrase ? 'Yes' : 'No',
       questionnaireName:         q.name || '',
-      questionnaireBusinessType: '',   /* not in Warm Leads schema; collected by voice */
+      questionnaireBusinessType: '',
       questionnaireService:      bookingLead.service || q.aiHelp || '',
       questionnairePain:         bookingLead.pain    || q.challenge || '',
       questionnaireSpend:        bookingLead.spend   || '',
       transcript: bookingLead.rawTranscript
-        .map((t) => `[${String(t.role || 'unknown').toUpperCase()}] ${String(t.text || '')}`)
+        .map(function(t) { return '[' + String(t.role || 'unknown').toUpperCase() + '] ' + String(t.text || ''); })
         .join(' | '),
       updatedAt: new Date().toISOString()
     };
   }
 
-  async function syncToSheets(reason, options) {
-    const payload = buildSheetPayload(reason);
-    const body = JSON.stringify(payload);
+  function syncToSheets(reason, options) {
+    var payload = buildSheetPayload(reason);
+    var body = JSON.stringify(payload);
 
-    /* ── sendBeacon path (tab close / pagehide) ── */
     if (options && options.preferBeacon && navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
-      const sent = navigator.sendBeacon(ARIA_SHEETS_WEBHOOK_URL, blob);
-      if (!sent) {
-        console.warn('ARIA: sendBeacon failed, falling back to fetch');
-      } else {
-        return;
+      try {
+        var blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
+        var sent = navigator.sendBeacon(ARIA_SHEETS_WEBHOOK_URL, blob);
+        if (sent) return;
+        console.warn('ARIA: sendBeacon rejected, falling back to fetch');
+      } catch (e) {
+        console.warn('ARIA: sendBeacon threw, falling back to fetch:', e);
       }
     }
 
-    /* ── Standard fetch path ── */
     try {
-      await fetch(ARIA_SHEETS_WEBHOOK_URL, {
+      fetch(ARIA_SHEETS_WEBHOOK_URL, {
         method:  'POST',
-        mode: 'no-cors',
+        mode:    'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body,
+        body:    body,
         keepalive: Boolean(options && options.keepalive)
+      }).then(function() {
+        console.info('ARIA: Lead synced to Sheets —', reason);
+      }).catch(function(e) {
+        console.warn('ARIA: Sheets sync failed (non-blocking):', e.message);
       });
-      console.info('ARIA: Lead synced to Sheets —', reason);
     } catch (e) {
-      console.warn('ARIA: Sheets sync failed (non-blocking):', e.message);
+      console.warn('ARIA: fetch() not available or failed:', e);
     }
   }
 
-  /* Debounce rapid transcript events — fire once per ~300 ms (was 600 ms) */
   function scheduleSheetSync(reason) {
     clearTimeout(backendSyncTimer);
-    backendSyncTimer = setTimeout(() => { syncToSheets(reason); }, 300);
+    backendSyncTimer = setTimeout(function() { syncToSheets(reason); }, 300);
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     ASSISTANT CONTEXT — built BEFORE vapi.start(), not mid-call
+     ASSISTANT CONTEXT
   ═══════════════════════════════════════════════════════════════ */
-
-  /**
-   * Pull the user's first name from any available source.
-   * Priority: voice-collected > questionnaire flat > homepage email prefix
-   */
   function getLeadName() {
     if (bookingLead.name) return bookingLead.name;
-    const ctx = getStoredContext();
-    const q = ctx.questionnaire;
-    if (q && q.name) return q.name.trim().split(/\s+/)[0];  /* first name only */
+    var ctx = getStoredContext();
+    var q = ctx.questionnaire;
+    if (q && q.name) return q.name.trim().split(/\s+/)[0];
     return '';
   }
 
-  /**
-   * Build the system context string to inject BEFORE the call starts.
-   * Reads the flat Warm Leads questionnaire schema:
-   *   name, email, challenge, contactProcess, aiHelp, systemStatus
-   */
   function buildAssistantContextMessage() {
-    const context = getStoredContext();
-    const q = context.questionnaire || {};
-    const parts = [];
+    var context = getStoredContext();
+    var q = context.questionnaire || {};
+    var parts = [];
 
-    /* Name — flat field from Warm Leads GAS */
-    const name = q.name || '';
-    if (name) parts.push('User\'s name: ' + name);
+    var name = q.name || '';
+    if (name) parts.push("User's name: " + name);
 
-    /* Email — flat field, also check homepage */
-    const email = q.email || context.homepageEmail || '';
-    if (email) parts.push('User\'s email: ' + email);
+    var email = q.email || context.homepageEmail || '';
+    if (email) parts.push("User's email: " + email);
 
-    /* Challenge — maps to questionnairePain */
-    if (q.challenge) parts.push('Their challenge: ' + q.challenge);
-
-    /* aiHelp — maps to questionnaireService */
-    if (q.aiHelp) parts.push('What AI help they want: ' + q.aiHelp);
-
-    /* contactProcess & systemStatus — bonus context */
+    if (q.challenge)      parts.push('Their challenge: ' + q.challenge);
+    if (q.aiHelp)         parts.push('What AI help they want: ' + q.aiHelp);
     if (q.contactProcess) parts.push('Contact process: ' + q.contactProcess);
     if (q.systemStatus)   parts.push('Current system: '  + q.systemStatus);
 
     if (!parts.length) return '';
 
     return (
-      'IMPORTANT — context captured from the user\'s questionnaire before this call. ' +
-      'You already know this information — do NOT ask for it again. ' +
-      'Use their name naturally from the first word. Details: ' +
+      "IMPORTANT — context captured from the user's questionnaire before this call. " +
+      "You already know this information — do NOT ask for it again. " +
+      "Use their name naturally from the first word. Details: " +
       parts.join(' | ')
     );
   }
 
-  /**
-   * Removed: sendAssistantContextIfAvailable() via vapi.send() mid-call.
-   * Injecting a message while ARIA speaks her firstMessage cuts the audio.
-   * Context is now baked into ASSISTANT_OVERRIDES.model.messages in startCall().
-   */
-
   /* ═══════════════════════════════════════════════════════════════
-     VAPI INSTANCE
+     VAPI SDK LOADER  (dynamic import with multi-CDN fallback)
   ═══════════════════════════════════════════════════════════════ */
-  let VapiConstructor = null;
-  let vapiLoadPromise = null;
+  var VapiConstructor = null;
+  var vapiLoadPromise = null;
 
-  async function getVapiConstructor() {
-    if (VapiConstructor) return VapiConstructor;
+  function getVapiConstructor() {
+    if (VapiConstructor) return Promise.resolve(VapiConstructor);
 
     if (!vapiLoadPromise) {
-      vapiLoadPromise = (async () => {
-        const errors = [];
-
-        for (const url of VAPI_SDK_URLS) {
-          try {
-            const module = await import(url);
-            const Constructor = module.default || module.Vapi;
-            if (typeof Constructor === 'function') {
-              console.info('ARIA: Vapi SDK loaded from', url);
-              return Constructor;
-            }
-            errors.push(`${url}: constructor export missing`);
-          } catch (error) {
-            errors.push(`${url}: ${readableError(error)}`);
-          }
+      vapiLoadPromise = (function tryNext(urls, errors) {
+        if (!urls.length) {
+          return Promise.reject(new Error('Vapi web SDK could not load. ' + errors.join(' | ')));
         }
-
-        throw new Error('Vapi web SDK could not load. ' + errors.join(' | '));
-      })();
+        var url = urls[0];
+        var rest = urls.slice(1);
+        return import(url).then(function(module) {
+          var Constructor = module.default || module.Vapi;
+          if (typeof Constructor === 'function') {
+            console.info('ARIA: Vapi SDK loaded from', url);
+            VapiConstructor = Constructor;
+            return Constructor;
+          }
+          return tryNext(rest, errors.concat(url + ': constructor export missing'));
+        }).catch(function(err) {
+          return tryNext(rest, errors.concat(url + ': ' + readableError(err)));
+        });
+      }(VAPI_SDK_URLS, []));
     }
 
-    VapiConstructor = await vapiLoadPromise;
-    return VapiConstructor;
+    return vapiLoadPromise;
   }
 
-  async function ensureVapiInstance() {
+  function ensureVapiInstance() {
     if (!window.isSecureContext) {
-      throw new Error('Microphone access requires HTTPS or localhost.');
+      return Promise.reject(new Error('Microphone access requires HTTPS or localhost.'));
     }
-    if (!vapi) {
-      const Vapi = await getVapiConstructor();
+    if (vapi) return Promise.resolve(vapi);
+    return getVapiConstructor().then(function(Vapi) {
       vapi = new Vapi(VAPI_KEY);
       bindVapiEvents();
-    }
-    return vapi;
+      return vapi;
+    });
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     ORB CLICK — MIC PERMISSION + CALL START
+     ORB CLICK — toggleCall
   ═══════════════════════════════════════════════════════════════ */
-  async function toggleCall(event) {
+  function toggleCall(event) {
     if (event) event.stopPropagation();
-    (active || starting) ? endCall() : await startCall();
+    if (active || starting) {
+      endCall();
+    } else {
+      startCall();
+    }
   }
 
   window.toggleCall = toggleCall;
 
-  async function startCall() {
+  function startCall() {
     if (!VAPI_KEY) {
       setHintMessage('VAPI_KEY is not configured. Contact support.');
       console.error('ARIA: VAPI_KEY is empty.');
       return;
     }
 
-    try {
-      starting = true;
-      setState('connecting');
-      setHintMessage('Allow microphone access when your browser asks…');
+    starting = true;
+    setState('connecting');
+    setHintMessage('Allow microphone access when your browser asks\u2026');
 
-      /*
-        Connection timeout guard — bail after 20 s so user isn't stuck.
-      */
-      connectingTimer = setTimeout(() => {
-        if (!active) {
-          console.warn('ARIA: connection timed out after 20 s');
-          starting = false;
-          setState('');
-          setHintMessage('Connection timed out — tap the orb to try again');
-          if (vapi) { try { vapi.stop(); } catch (_) {} }
-        }
-      }, 20000);
+    connectingTimer = setTimeout(function() {
+      if (!active) {
+        console.warn('ARIA: connection timed out after 20 s');
+        starting = false;
+        setState('');
+        setHintMessage('Connection timed out \u2014 tap the orb to try again');
+        if (vapi) { try { vapi.stop(); } catch (_) {} }
+      }
+    }, 20000);
 
-      await ensureVapiInstance();
+    ensureVapiInstance().then(function() {
+      var contextMsg = buildAssistantContextMessage();
+      var knownName  = getLeadName();
 
-      /*
-        Build context once, inject it into the overrides BEFORE vapi.start().
-        This avoids the mid-stream vapi.send() that was cutting ARIA's greeting.
-        If a name is known from the questionnaire, personalise the firstMessage too.
-      */
-      const contextMsg  = buildAssistantContextMessage();
-      const knownName   = getLeadName();
-
-      /* Clone overrides so we don't mutate the shared object between calls */
-      const overrides = JSON.parse(JSON.stringify(ASSISTANT_OVERRIDES));
+      /* FIX #12: use deepClone() helper (structuredClone with JSON fallback) */
+      var overrides = deepClone(ASSISTANT_OVERRIDES);
 
       if (contextMsg) {
         overrides.model = overrides.model || {};
@@ -1023,42 +1115,43 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
 
       if (knownName) {
-        /* Personalised opener — skips asking for name since we already know it */
         overrides.firstMessage =
-          `Hey ${knownName}! I'm ARIA from Nexus Luma — I saw your questionnaire. ` +
-          `Ready to get your strategy call booked?`;
+          'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
+          "Ready to get your strategy call booked?";
       }
 
       if (ASSISTANT_ID) {
-        await vapi.start(ASSISTANT_ID, overrides);
+        return vapi.start(ASSISTANT_ID, overrides);
       } else {
-        /* Inline assistant — merge overrides in */
-        const inline = JSON.parse(JSON.stringify(INLINE_ASSISTANT));
+        /* FIX #13: context pushed AFTER persona prompt (not unshifted before it),
+           so the main role definition always takes precedence for the model. */
+        var inline = deepClone(INLINE_ASSISTANT);
         if (contextMsg) {
-          inline.model.messages.unshift({ role: 'system', content: contextMsg });
+          inline.model.messages.push({ role: 'system', content: contextMsg });
         }
         if (knownName) {
           inline.firstMessage =
-            `Hey ${knownName}! I'm ARIA from Nexus Luma — I saw your questionnaire. ` +
-            `Ready to get your strategy call booked?`;
+            'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
+            "Ready to get your strategy call booked?";
         }
-        await vapi.start(inline);
+        return vapi.start(inline);
       }
-
-    } catch (error) {
+    }).catch(function(error) {
       clearTimeout(connectingTimer);
-      const message = readableError(error);
-      console.error('Vapi start failed:', error);
+      var message = readableError(error);
+      console.error('ARIA: Vapi start failed:', error);
       active = false;
       starting = false;
       setState('');
-      setHintMessage('Could not start — check browser console for details');
+      setHintMessage('Could not start \u2014 check browser console for details');
+      /* Use alert() only as last resort — avoids silent failures */
       alert('ARIA could not start: ' + message);
-    }
+    });
   }
 
   function endCall() {
     starting = false;
+    removeThinking();   /* FIX #17: clear thinking dots immediately on manual end */
     if (vapi) {
       try { vapi.stop(); } catch (e) { console.warn('vapi.stop() error:', e); }
     }
@@ -1069,22 +1162,21 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function bindVapiEvents() {
 
-    vapi.on('call-start', () => {
+    vapi.on('call-start', function() {
       clearTimeout(connectingTimer);
       starting = false;
       active    = true;
       finishing = false;
       clearTimeout(completionRedirectTimer);
       setState('listening');
-      setHintMessage('Speak naturally — ARIA will guide you');
-      /* Context is already baked into overrides before vapi.start() — no mid-call injection needed */
+      setHintMessage('Speak naturally \u2014 ARIA will guide you');
       syncToSheets('call-start');
     });
 
-    vapi.on('call-end', () => {
+    vapi.on('call-end', function() {
       clearTimeout(connectingTimer);
       starting = false;
-      active = false;
+      active    = false;
       removeThinking();
       finalizePartialTranscript();
       setState('');
@@ -1095,22 +1187,21 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         { keepalive: true, preferBeacon: true }
       );
       if (finishing) {
-        setHintMessage('All set — taking you to the next step…');
+        setHintMessage('All set \u2014 taking you to the next step\u2026');
         goToNextStep();
       }
     });
 
-    /* speech-start / speech-end refer to ARIA's TTS output */
-    vapi.on('speech-start', () => {
-      removeThinking();   /* ARIA started talking — hide the dots */
+    vapi.on('speech-start', function() {
+      removeThinking();
       setState('speaking');
     });
 
-    vapi.on('speech-end', () => {
+    vapi.on('speech-end', function() {
       setState('listening');
     });
 
-    vapi.on('volume-level', (vol) => {
+    vapi.on('volume-level', function(vol) {
       document.body.classList.remove('vol-med', 'vol-high');
       if (vol > 0.6)       document.body.classList.add('vol-high');
       else if (vol > 0.25) document.body.classList.add('vol-med');
@@ -1118,46 +1209,44 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     /*
       MESSAGE ROUTING
-      ─────────────────────────────────────────────────────────────
-      transcript + transcriptType 'partial' → live preview bubble
-      transcript + transcriptType 'final'   → finalise bubble + detection + sync
-      assistant / bot type                  → ARIA reply bubble + detection
+      transcript + partial   → live preview bubble
+      transcript + final     → finalise + detection + sync
+      assistant / bot type   → ARIA reply bubble + detection
     */
-    vapi.on('message', (message) => {
+    vapi.on('message', function(message) {
       if (!message) return;
 
-      const msgType        = message.type || '';
-      const transcriptType = message.transcriptType || message.transcript_type || '';
-      const role           = getMessageRole(message);
+      var msgType        = message.type || '';
+      var transcriptType = message.transcriptType || message.transcript_type || '';
 
-      /* ── Transcript stream ── */
+      /* FIX #15: resolve role reliably — check role field first, not type */
+      var role = getMessageRole(message);
+
       if (msgType === 'transcript') {
 
         if (transcriptType === 'partial') {
           if (role !== 'user') return;
-          /* Show what the user is saying in real-time */
-          const text = extractMessageText(message);
-          if (text) updatePartialTranscript(text);
+          var partialText = extractMessageText(message);
+          if (partialText) updatePartialTranscript(partialText);
           return;
         }
 
         if (transcriptType === 'final') {
-          const text = extractMessageText(message);
-          if (text) {
-            finalizePartialTranscript();           /* Lock the partial bubble */
+          var finalText = extractMessageText(message);
+          if (finalText) {
+            finalizePartialTranscript();
 
             if (role === 'assistant') {
               removeThinking();
-              appendChatMessage('aria', text);
+              appendChatMessage('aria', finalText);
             } else {
-              /* Replace the partial with a clean final bubble */
-              const last = transcriptEl && transcriptEl.lastElementChild;
-              if (last && last.classList.contains('user') && !last.classList.contains('partial')) {
-                last.textContent = text.trim();      /* Update in-place */
+              var lastEl = transcriptEl && transcriptEl.lastElementChild;
+              if (lastEl && lastEl.classList.contains('user') && !lastEl.classList.contains('partial')) {
+                lastEl.textContent = finalText.trim();
               } else {
-                appendChatMessage('user', text);
+                appendChatMessage('user', finalText);
               }
-              showThinking();                        /* Show thinking dots while ARIA processes */
+              showThinking();
             }
           }
           handleFinalTranscript(message);
@@ -1165,11 +1254,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         }
       }
 
-      /* ── ARIA / assistant reply ── */
       if (msgType === 'assistant' || msgType === 'bot') {
         removeThinking();
-        const text = extractMessageText(message);
-        if (text) appendChatMessage('aria', text);
+        var botText = extractMessageText(message);
+        if (botText) appendChatMessage('aria', botText);
         handleFinalTranscript(message);
         return;
       }
@@ -1179,42 +1267,39 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
     });
 
-    vapi.on('error', (error) => {
+    vapi.on('error', function(error) {
       clearTimeout(connectingTimer);
-      console.error('Vapi error:', error);
-      active = false;
+      console.error('ARIA: Vapi error:', error);
+      active   = false;
       starting = false;
       removeThinking();
       setState('');
-      setHintMessage('Something went wrong — check the browser console');
+      setHintMessage('Something went wrong \u2014 check the browser console');
       syncToSheets('call-error');
     });
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     TRANSCRIPT PROCESSING  (final turns only)
+     TRANSCRIPT PROCESSING
   ═══════════════════════════════════════════════════════════════ */
   function handleFinalTranscript(message) {
-    const text = extractMessageText(message);
+    var text = extractMessageText(message);
     if (!text) return;
 
-    const role = getMessageRole(message);
-    const transcriptKey = `${role}|${text}`;
+    var role = getMessageRole(message);
+    var transcriptKey = role + '|' + text;
     if (transcriptKey === lastTranscriptKey) return;
     lastTranscriptKey = transcriptKey;
 
     bookingLead.rawTranscript.push({
       at:   new Date().toISOString(),
-      role,
-      text
+      role: role,
+      text: text
     });
 
     detectLeadFields(text, role);
     scheduleSheetSync('transcript-update');
 
-    /*
-      Only trigger completion on ARIA's turns.
-    */
     if (role === 'assistant' && isCompletionPhrase(text)) {
       finishConversationAndAdvance();
     }
@@ -1226,22 +1311,25 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function handleConversationUpdate(message) {
-    const messages = Array.isArray(message.messages)
+    var messages = Array.isArray(message.messages)
       ? message.messages
       : Array.isArray(message.conversation)
         ? message.conversation
         : [];
 
-    const lastAssistantMessage = [...messages].reverse().find((item) => {
-      return getMessageRole(item) === 'assistant' && extractMessageText(item);
-    });
-
-    if (lastAssistantMessage) handleFinalTranscript(lastAssistantMessage);
+    var reversed = messages.slice().reverse();
+    var lastAssistant = null;
+    for (var i = 0; i < reversed.length; i++) {
+      if (getMessageRole(reversed[i]) === 'assistant' && extractMessageText(reversed[i])) {
+        lastAssistant = reversed[i];
+        break;
+      }
+    }
+    if (lastAssistant) handleFinalTranscript(lastAssistant);
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     COMPLETION FLOW — close call + advance to paywall
-     Runs after ARIA says a configured closeout phrase.
+     COMPLETION FLOW
   ═══════════════════════════════════════════════════════════════ */
   function finishConversationAndAdvance() {
     if (finishing) return;
@@ -1250,13 +1338,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     bookingLead.completionPhrase = true;
     saveLeadSnapshot();
     syncToSheets('completion');
-    setHintMessage('All set — taking you to the next step…');
+    setHintMessage('All set \u2014 taking you to the next step\u2026');
 
     clearTimeout(completionRedirectTimer);
-    completionRedirectTimer = setTimeout(() => {
+    completionRedirectTimer = setTimeout(function() {
       if (vapi && active) {
         try { vapi.stop(); } catch (e) {
-          console.warn('Could not stop Vapi before redirect:', e);
+          console.warn('ARIA: Could not stop Vapi before redirect:', e);
         }
       }
       goToNextStep();
@@ -1265,82 +1353,54 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   /* ═══════════════════════════════════════════════════════════════
      SPOKEN TEXT NORMALISATION
-     Converts spoken-aloud formats → machine-readable before detection.
-     Handles emails said aloud, phonetic alphabets, and common fillers.
   ═══════════════════════════════════════════════════════════════ */
-
-  /* NATO / common phonetic alphabet → letter */
-  const PHONETIC_MAP = {
+  var PHONETIC_MAP = {
     alpha:'a', bravo:'b', charlie:'c', delta:'d', echo:'e',
     foxtrot:'f', golf:'g', hotel:'h', india:'i', juliet:'j',
     kilo:'k', lima:'l', mike:'m', november:'n', oscar:'o',
     papa:'p', quebec:'q', romeo:'r', sierra:'s', tango:'t',
     uniform:'u', victor:'v', whiskey:'w', xray:'x', yankee:'y',
     zulu:'z',
-    /* common non-NATO variants */
     apple:'a', boy:'b', cat:'c', dog:'d', edward:'e',
     frank:'f', george:'g', henry:'h', ida:'i', john:'j',
     king:'k', love:'l', mary:'m', nancy:'n', ocean:'o',
     peter:'p', queen:'q', robert:'r', sam:'s', thomas:'t',
-    uncle:'u', victor:'v', william:'w', young:'y', zebra:'z'
+    uncle:'u', william:'w', young:'y', zebra:'z'
   };
 
-  /**
-   * Resolve a single phonetic token to its letter, or return the
-   * original token if it's already a single letter.
-   */
   function resolvePhonetic(token) {
-    const t = token.toLowerCase();
+    var t = token.toLowerCase();
     if (t.length === 1) return t;
     return PHONETIC_MAP[t] || token;
   }
 
-  /**
-   * Convert spoken email / identifier text to a usable string.
-   * Handles:
-   *   "john at gmail dot com"          → john@gmail.com
-   *   "j o h n at g mail dot com"     → john@gmail.com
-   *   "juliet oscar hotel november …"  → john@…
-   *   "underscore / hyphen / dash"
-   */
   function normalizeSpokenIdentifier(raw) {
     return raw
-      /* punctuation words */
       .replace(/\bat\b/gi,         '@')
       .replace(/\bdot\b/gi,        '.')
       .replace(/\bperiod\b/gi,     '.')
       .replace(/\bunderscore\b/gi, '_')
       .replace(/\bdash\b/gi,       '-')
       .replace(/\bhyphen\b/gi,     '-')
-      /* resolve phonetics — word by word */
       .split(/\s+/)
       .map(resolvePhonetic)
       .join('')
-      /* collapse any remaining spaces */
       .replace(/\s+/g, '')
       .toLowerCase();
   }
 
-  /**
-   * Attempt to extract an email from a block of text that might be
-   * spoken aloud in any of the normalised formats above.
-   * Returns null if nothing plausible is found.
-   */
   function extractSpokenEmail(text) {
-    /* 1. Standard typed-style email already in text */
-    const directMatch = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
+    var directMatch = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
     if (directMatch) return directMatch[0].toLowerCase();
 
-    /* 2. Spoken "… at … dot …" pattern */
-    const spokenMatch = text.match(
+    var spokenMatch = text.match(
       /([A-Za-z0-9 .]+?)\s+(?:at)\s+([A-Za-z0-9 .]+?)\s+(?:dot)\s+([A-Za-z]{2,})/i
     );
     if (spokenMatch) {
-      const local  = normalizeSpokenIdentifier(spokenMatch[1]);
-      const domain = normalizeSpokenIdentifier(spokenMatch[2]);
-      const tld    = normalizeSpokenIdentifier(spokenMatch[3]);
-      const email  = `${local}@${domain}.${tld}`;
-      /* Sanity-check: must look like a real email */
+      var local  = normalizeSpokenIdentifier(spokenMatch[1]);
+      var domain = normalizeSpokenIdentifier(spokenMatch[2]);
+      var tld    = normalizeSpokenIdentifier(spokenMatch[3]);
+      var email  = local + '@' + domain + '.' + tld;
       if (/^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email)) return email;
     }
 
@@ -1348,13 +1408,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     TEXT EXTRACTION — normalised across Vapi SDK versions
+     TEXT EXTRACTION
   ═══════════════════════════════════════════════════════════════ */
   function extractMessageText(message) {
     if (!message) return '';
     if (Array.isArray(message.content)) {
       return message.content
-        .map((part) => typeof part === 'string' ? part : (part.text || part.content || ''))
+        .map(function(part) {
+          return typeof part === 'string' ? part : (part.text || part.content || '');
+        })
         .join(' ')
         .trim();
     }
@@ -1363,11 +1425,22 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     ).trim();
   }
 
+  /* FIX #15 — role detection: check .role field first; only fall back to .type
+     if .role is absent. Previously the regex tested message.type which caused
+     'transcript' messages to always resolve to 'unknown'. */
   function getMessageRole(message) {
-    const rawRole = String((message && (message.role || message.type || message.speaker)) || '');
-    if (rawRole.match(/user|customer|human/i)) return 'user';
-    if (rawRole.match(/assistant|bot|aria|ai/i)) return 'assistant';
-    return rawRole || 'unknown';
+    if (!message) return 'unknown';
+    /* Prefer explicit role field */
+    var roleField = String(message.role || '');
+    if (roleField) {
+      if (/user|customer|human/i.test(roleField))      return 'user';
+      if (/assistant|bot|aria|ai/i.test(roleField))    return 'assistant';
+    }
+    /* Fall back to type/speaker only when role is absent */
+    var typeField = String(message.type || message.speaker || '');
+    if (/user|customer|human/i.test(typeField))        return 'user';
+    if (/assistant|bot|aria|ai/i.test(typeField))      return 'assistant';
+    return 'unknown';
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1375,93 +1448,72 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function detectLeadFields(text, role) {
 
-    /* ── EMAIL (spoken + typed formats) ── */
-    const emailFound = extractSpokenEmail(text);
+    var emailFound = extractSpokenEmail(text);
     if (emailFound) bookingLead.email = emailFound;
 
-    /* ── PHONE ── */
-    const phone = text.match(
-      /(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/
-    );
+    var phone = text.match(/(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
     if (phone && !bookingLead.phone) bookingLead.phone = phone[0].trim();
 
-    /* ── NAME ──
-       Matches explicit "my name is …", "I'm …", or a bare name reply.
-       Also captures ARIA's read-back so a correction is caught:
-         ARIA: "Nice to meet you, Sarah — did I get that right?"
-         USER: "Actually it's Sara"  ← bare correction
-    */
-    const nameWithPrefix = text.match(
+    var nameWithPrefix = text.match(
       /(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i
     );
     if (nameWithPrefix) {
       bookingLead.name = cleanValue(nameWithPrefix[1]);
     } else if (role === 'user' && !bookingLead.name) {
-      const bareNamePattern = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
-      if (bareNamePattern && text.length < 40) {
-        bookingLead.name = cleanValue(bareNamePattern[1]);
+      var bareName = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
+      if (bareName && text.length < 40) {
+        bookingLead.name = cleanValue(bareName[1]);
       }
     }
 
-    /* ── BUSINESS NAME ── */
     if (!bookingLead.businessName) {
-      const biz = text.match(
+      var biz = text.match(
         /(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i
       );
       if (biz) bookingLead.businessName = cleanValue(biz[1]);
     }
 
-    /* ── LOCATION ── */
     if (!bookingLead.location) {
-      const loc = text.match(
+      var loc = text.match(
         /(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i
       );
       if (loc) bookingLead.location = cleanValue(loc[1]);
     }
 
-    /* ── APPOINTMENT TIME ── */
     if (!bookingLead.appointmentTime) {
-      const timePattern = text.match(
+      var timePattern = text.match(
         /(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?) (?:at|on|for|a[t]?)?\s*((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next week|\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening)[^,.!?]{0,40})/i
       );
       if (timePattern) bookingLead.appointmentTime = cleanValue(timePattern[1]);
     }
 
-    /* ── AVAILABILITY ── */
     if (!bookingLead.availability) {
-      const availPattern = text.match(
+      var availPattern = text.match(
         /\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i
       );
       if (availPattern) bookingLead.availability = cleanValue((availPattern[1] + availPattern[2]).trim());
     }
 
-    /* ── BOOKING INTENT ── */
     if (!bookingLead.bookingIntent) {
       bookingLead.bookingIntent = /\b(book|booking|appointment|schedule|calendar|call|consultation|meeting|slot)\b/i.test(text);
     }
 
-    /* ── SERVICE (questionnaireService — sheet col P) ──
-       Captures what the user does / offers */
     if (!bookingLead.service) {
-      const svc = text.match(
+      var svc = text.match(
         /(?:(?:my |our )?(?:service is|services? (?:include|are)|we (?:offer|do|provide|specialize in|focus on)|i (?:offer|do|provide|specialize in|help with)|primary service is|main service is))\s+([^,.!?]{3,80})/i
       );
       if (svc) bookingLead.service = cleanValue(svc[1]);
     }
 
-    /* ── PAIN / CHALLENGE (questionnairePain — sheet col Q) ──
-       Captures the problem they want solved */
     if (!bookingLead.pain) {
-      const pain = text.match(
+      var pain = text.match(
         /(?:(?:my |our |the )?(?:biggest (?:challenge|problem|issue|struggle) is|challenge is|problem is|pain (?:point )?is|struggling with|having trouble with|issue is|i (?:need help|can't|cannot) (?:with )?|trying to (?:fix|solve|improve)))\s+([^,.!?]{3,100})/i
       );
       if (pain) bookingLead.pain = cleanValue(pain[1]);
     }
 
-    /* ── SPEND / BUDGET (questionnaireSpend — sheet col R) ──
-       Captures budget, ad spend, or revenue figures */
     if (!bookingLead.spend) {
-      const spend = text.match(
+      var spend = text.match(
         /(?:(?:(?:monthly |weekly |annual |current )?(?:budget|spend|spending|ad spend|revenue|make|earn|doing|bringing in)) (?:is |of |about |around |roughly )?)(\$[\d,]+(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?|\d+(?:,\d{3})*(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?)/i
       );
       if (spend) bookingLead.spend = cleanValue(spend[1]);
@@ -1481,9 +1533,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function saveLeadSnapshot() {
+    if (!isStorageAvailable()) return;   /* FIX #11 */
     try {
       localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead));
-    } catch (e) { console.warn('Could not save lead snapshot:', e); }
+    } catch (e) {
+      console.warn('ARIA: Could not save lead snapshot:', e);
+    }
   }
 
   function goToNextStep() {
@@ -1493,29 +1548,37 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   /* ═══════════════════════════════════════════════════════════════
      PAGE INIT
   ═══════════════════════════════════════════════════════════════ */
-  window.addEventListener('DOMContentLoaded', () => {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      document.body.classList.add('page-ready');
-    }));
+  document.addEventListener('DOMContentLoaded', function() {
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        document.body.classList.add('page-ready');
+      });
+    });
 
-    getVapiConstructor().catch((error) => {
+    /* Pre-warm the SDK — load it in the background so first tap is fast */
+    getVapiConstructor().catch(function(error) {
       console.error('ARIA WARNING: Vapi SDK preload failed:', error);
     });
 
-    setTimeout(() => {
+    /* Warn if SDK still not loaded after 3 s (likely CSP or ad-blocker) */
+    setTimeout(function() {
       if (!VapiConstructor) {
         console.error(
-          'ARIA WARNING: Vapi SDK did not load. ' +
-          'Check for network errors, ad-blockers, or CSP headers.'
+          'ARIA WARNING: Vapi SDK did not load within 3 s. ' +
+          'Check for network errors, ad-blockers, or Content-Security-Policy headers. ' +
+          'If using a self-hosted CSP, allowlist esm.sh and cdn.jsdelivr.net.'
         );
       }
     }, 3000);
 
+    /* Set initial idle status text (FIX #23) */
+    setStatusText('idle');
+
     console.info('ARIA: lead sync target is', ARIA_SHEETS_WEBHOOK_URL);
   });
 
-  /* Persist lead + sync to Sheets when tab closes or navigates away */
-  window.addEventListener('pagehide', () => {
+  /* Persist lead + sync when tab closes or navigates away */
+  window.addEventListener('pagehide', function() {
     saveLeadSnapshot();
     syncToSheets(
       active ? 'pagehide-active-call' : 'pagehide',
