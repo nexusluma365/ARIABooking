@@ -559,7 +559,12 @@
 
   var VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
-  var FORCE_INLINE_ASSISTANT = true;
+  /*
+    Keep false in production. The Vapi public web key for this funnel is
+    authorized for the dashboard assistant ID path; inline assistant creation
+    can be rejected by Vapi with POST /call/web 403 Forbidden.
+  */
+  var FORCE_INLINE_ASSISTANT = false;
 
   /* ─── REDIRECT TARGET ────────────────────────────────────────────
      Updated to the full absolute URL so the redirect works correctly
