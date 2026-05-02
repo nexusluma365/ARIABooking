@@ -738,9 +738,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       } else if (status === 401) {
         setHintMessage('Invalid API key (401) \u2014 update VAPI_KEY');
         alert('ARIA: 401 Unauthorized — VAPI_KEY is invalid or missing. Update it in the page config.');
+      } else if (status === 400 && isVapiBillingError(error)) {
+        setHintMessage('ARIA is unavailable until Vapi credits are topped up');
+        alert('ARIA cannot start because the Vapi wallet has no available credits. Add credits or upgrade the Vapi plan, then try again.');
       } else if (status && status >= 500) {
         setHintMessage('Vapi server error (' + status + ') \u2014 tap orb to retry');
         alert('ARIA: Vapi returned a ' + status + ' server error. This is on their end — retry in a moment.');
+      } else if (status === 400) {
+        setHintMessage('Vapi rejected the assistant configuration');
+        alert('ARIA could not start because Vapi rejected the assistant configuration. Check the Vapi dashboard for this assistant.');
       } else {
         setHintMessage('Could not start \u2014 check browser console for details');
         alert('ARIA could not start: ' + readableError(error));
@@ -989,22 +995,35 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
 
       /* 4/6 — Fatal or pre-start non-empty error — full teardown */
+      var wasActive = active;
+      var wasStarting = starting;
       callEndHandled = true;
       active = false; starting = false;
       removeThinking();
       setState('');
 
       var httpStatus = getHttpStatus(error);
+      var errorText = getErrorText(error);
       if (httpStatus === 403) {
         setHintMessage('API key rejected (403) \u2014 check Vapi dashboard');
         console.error('ARIA 403: Check VAPI_KEY, Allowed Origins, Assistant ID, and billing at app.vapi.ai');
       } else if (httpStatus === 401) {
         setHintMessage('Invalid API key (401) \u2014 update VAPI_KEY in config');
+      } else if (httpStatus === 400 && isVapiBillingError(error)) {
+        setHintMessage('ARIA is unavailable until Vapi credits are topped up');
+        console.error('ARIA Vapi billing block:', errorText);
+      } else if (httpStatus === 400 && wasStarting && !wasActive) {
+        setHintMessage('Vapi rejected the assistant configuration');
+        console.error('ARIA Vapi assistant configuration rejected:', errorText);
       } else {
         setHintMessage('Something went wrong \u2014 tap the orb to try again');
       }
 
-      syncToSheets('call-error');
+      if (wasActive) {
+        syncToSheets('call-error');
+      } else {
+        console.info('ARIA: startup failure not synced as call-error because no call was created.');
+      }
       vapi = null;
     });
   }
@@ -1116,14 +1135,28 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      fields (statusCode), and parsing it from message strings.
   ───────────────────────────────────────────────────────────── */
   function getHttpStatus(error) {
-    if (!error) return null;
-    if (error.status)     return Number(error.status);
-    if (error.statusCode) return Number(error.statusCode);
-    if (error.response && error.response.status) return Number(error.response.status);
-    if (error.error && error.error.status)        return Number(error.error.status);
+    var found = null, seen = [];
+    function walk(obj, depth) {
+      if (!obj || found || depth > 4) return;
+      if (typeof obj === 'object') {
+        if (seen.indexOf(obj) !== -1) return;
+        seen.push(obj);
+        if (obj.status) { found = Number(obj.status); return; }
+        if (obj.statusCode) { found = Number(obj.statusCode); return; }
+        if (obj.code && /^(4|5)\d{2}$/.test(String(obj.code))) { found = Number(obj.code); return; }
+        var fields = ['error','response','data','body','cause'];
+        for (var i=0; i<fields.length; i++) walk(obj[fields[i]], depth + 1);
+      }
+    }
+    walk(error, 0);
+    if (found) return found;
     var msg = String(error.message || error.msg || error.errorMsg || error || '');
     var m = msg.match(/\b(4\d{2}|5\d{2})\b/);
     return m ? Number(m[1]) : null;
+  }
+
+  function isVapiBillingError(error) {
+    return /wallet balance|purchase more credits|upgrade your plan|billing|credits|subscriptionLimits/i.test(getErrorText(error));
   }
 
   function handleFinalTranscript(message) {
