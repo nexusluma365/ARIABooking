@@ -554,7 +554,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     } catch(e) { console.warn('ARIA: fetch() not available or failed:', e); }
   }
 
-  function scheduleSheetSync(reason) { clearTimeout(backendSyncTimer); backendSyncTimer = setTimeout(function() { syncToSheets(reason); }, 300); }
+  function scheduleSheetSync(reason) {
+    /* 500ms delay ensures the Sheets fetch never initiates during the
+       ~90ms VAD re-arm window after speech-end. Network I/O setup is
+       synchronous up to the first await — even async fetch has a small
+       main-thread cost at call time that we keep away from mic flips. */
+    clearTimeout(backendSyncTimer);
+    backendSyncTimer = setTimeout(function() { syncToSheets(reason); }, 500);
+  }
 
   function getLeadName() {
     if (bookingLead.name) return bookingLead.name;
@@ -884,9 +891,22 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (transcriptKey===lastTranscriptKey) return;
     lastTranscriptKey = transcriptKey;
     bookingLead.rawTranscript.push({ at: new Date().toISOString(), role:role, text:text });
-    detectLeadFields(text, role);
-    scheduleSheetSync('transcript-update');
-    if (role==='assistant' && isCompletionPhrase(text)) { finishConversationAndAdvance(); }
+
+    /* Completion check is the only thing that MUST be synchronous —
+       it triggers the redirect timer and must fire on this tick.      */
+    if (role === 'assistant' && isCompletionPhrase(text)) {
+      finishConversationAndAdvance();
+      return; /* redirect path — no need to run lead detection */
+    }
+
+    /* Everything else (regex matching, localStorage write, fetch) is
+       deferred off the audio-critical path with setTimeout(fn, 0).
+       This yields control back to Vapi's mic-flip logic immediately,
+       eliminating the per-turn delay that grew with conversation length. */
+    setTimeout(function() {
+      detectLeadFields(text, role);
+      scheduleSheetSync('transcript-update');
+    }, 0);
   }
 
   function isCompletionPhrase(text) {
@@ -904,7 +924,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   function finishConversationAndAdvance() {
     if (finishing) return;
     finishing=true; bookingLead.completionPhrase=true;
-    saveLeadSnapshot(); syncToSheets('completion');
+    /* Immediate save on completion — call is about to end, can't defer */
+    if (isStorageAvailable()) { try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); } catch(_) {} }
+    syncToSheets('completion');
     setHintMessage('All set \u2014 taking you to the next step\u2026');
     clearTimeout(completionRedirectTimer);
     completionRedirectTimer = setTimeout(function() {
@@ -972,7 +994,21 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function cleanValue(value) { return value.replace(/\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i,'').replace(/[.!?,]+$/,'').trim(); }
-  function saveLeadSnapshot() { if (!isStorageAvailable()) return; try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); } catch(e) { console.warn('ARIA: Could not save lead snapshot:', e); } }
+  function saveLeadSnapshot() {
+    /* Use requestIdleCallback when available — browser schedules this
+       only during idle periods so it never competes with audio callbacks.
+       Falls back to setTimeout(fn, 0) on browsers without rIC support.  */
+    var doSave = function() {
+      if (!isStorageAvailable()) return;
+      try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); }
+      catch(e) { console.warn('ARIA: Could not save lead snapshot:', e); }
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(doSave, { timeout: 2000 });
+    } else {
+      setTimeout(doSave, 0);
+    }
+  }
   function goToNextStep() { window.location.href = NEXT_STEP_URL; }
 
   document.addEventListener('DOMContentLoaded', function() {
