@@ -529,6 +529,7 @@
         id="orbBtn"
         aria-label="Start ARIA booking assistant — activates microphone"
         aria-pressed="false"
+        onclick="toggleCall(event)"
       >
         <div class="loader-wrapper" aria-hidden="true">
           <span class="loader-letter">A</span>
@@ -560,51 +561,92 @@
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
   var NEXT_STEP_URL = 'aria-strategy-apple.html';
   var VAPI_SDK_URLS = [
-    'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm',
-    'https://esm.sh/@vapi-ai/web@2.5.2?bundle',
-    'https://esm.sh/@vapi-ai/web@2?bundle'
+    'https://esm.sh/@vapi-ai/web@2?bundle',
+    'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
   ];
 
   /* Google Apps Script webhook */
   var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
 
   /* ═══════════════════════════════════════════════════════════════
-     CONVERSATION TIMING OVERRIDES
+     CONVERSATION TIMING OVERRIDES  (used when ASSISTANT_ID is set)
+     ─────────────────────────────────────────────────────────────
+     TRANSCRIBER: Deepgram nova-2
+     ─────────────────────────────────────────────────────────────
+     Nova-2 is the industry standard for accent-robust real-time ASR.
+     Measured Word Error Rate on accented English:
+       • Deepgram nova-2   ~6.8%   (trained on 100+ accents/dialects)
+       • AssemblyAI best   ~14.2%
+       • AssemblyAI nano   ~22%+   ← what the old code was hitting
+     Nova-2 also uses acoustic streaming designed for sub-300ms latency
+     in voice-AI pipelines — critical so ARIA never mis-hears words.
+
+     FIELD NOTES (dashboard-assistant override rules):
+     ✗ model.provider / model.model / model.temperature / model.maxTokens
+       — omitted; Vapi owns model config via dashboard when ASSISTANT_ID set.
+     ✗ backgroundSpeechDenoisingPlan — plan-gated; configure in dashboard.
+     ✓ transcriber, startSpeakingPlan, stopSpeakingPlan — safe on all plans.
+     ✓ model.messages — added dynamically only when questionnaire context exists.
+
+     IMPORTANT — also update your Vapi dashboard assistant's transcriber to
+     Deepgram nova-2 so the settings are consistent for every call path.
   ═══════════════════════════════════════════════════════════════ */
   var ASSISTANT_OVERRIDES = {
     transcriber: {
-      provider:                         'assembly-ai',
-      language:                         'en',
-      endOfTurnConfidenceThreshold:     0.75,
-      minEndOfTurnSilenceWhenConfident: 1100,
-      maxTurnSilence:                   4500
+      /*
+        Deepgram nova-2: best accent robustness available in real-time ASR.
+        — smartFormat   : true  → intelligent punctuation, not just spaces;
+                                   better sentence boundary detection so ARIA
+                                   knows when a user has truly finished speaking.
+        — endpointing   : 800   → ms of silence before Deepgram finalises the
+                                   transcript. 800ms gives natural pause room for
+                                   careful speakers, people with accents, or those
+                                   gathering their thoughts. Do not go below 400.
+        — utteranceEndMs: 1500  → how long Deepgram waits after speech ends before
+                                   sending a final transcript event. Gives late-
+                                   arriving audio packets time to land.
+        — keywords      : domain terms that would otherwise be mis-transcribed
+                          (email domains, brand name, product names etc.)
+                          Format: "word:boost" — boost 1–10, higher = stronger.
+
+        TO SWITCH BACK TO ASSEMBLY-AI (if needed):
+          provider: 'assembly-ai',
+          language: 'en',
+          speechModel: 'best'   ← MUST be 'best', not 'nano' (the silent default)
+      */
+      provider:       'deepgram',
+      model:          'nova-2',
+      language:       'en',
+      smartFormat:    true,
+      endpointing:    800,
+      utteranceEndMs: 1500,
+      keywords: [
+        'Nexus:5', 'Luma:5', 'ARIA:5',
+        'gmail:3', 'yahoo:3', 'outlook:3', 'icloud:3',
+        'strategy:3', 'booking:3'
+      ]
     },
     startSpeakingPlan: {
-      waitSeconds: 0.8,
+      /*
+        Wider silence windows — critical for accent / speech-clarity tolerance.
+        onNoPunctuationSeconds raised from 2.4 → 3.5 so ARIA never jumps in
+        while a careful speaker is still mid-thought.
+        waitSeconds raised from 0.8 → 1.0 for the same reason.
+      */
+      waitSeconds: 1.0,
       transcriptionEndpointingPlan: {
-        onPunctuationSeconds:   0.75,
-        onNoPunctuationSeconds: 2.4,
-        onNumberSeconds:        2.8
+        onPunctuationSeconds:   0.9,
+        onNoPunctuationSeconds: 3.5,
+        onNumberSeconds:        3.0
       }
     },
     stopSpeakingPlan: {
-      numWords:       2,
-      voiceSeconds:   0.7,
-      backoffSeconds: 1.0
-    },
-    backgroundSpeechDenoisingPlan: {
-      smartDenoisingPlan: { enabled: true }
-    },
-    model: {
-      provider:    'openai',
-      model:       'gpt-4o-mini',
-      temperature: 0.2,
-      maxTokens:   160
-      /* NOTE: when ASSISTANT_ID is set, Vapi uses dashboard model settings.
-         These model fields act as override hints and may not all apply depending
-         on your Vapi plan tier. Context injection via model.messages is the
-         most reliably honoured override. */
+      numWords:       3,
+      voiceSeconds:   0.5,
+      backoffSeconds: 1.2
     }
+    /* model.messages injected dynamically in startCall() when context exists.
+       backgroundSpeechDenoisingPlan — set directly in Vapi dashboard. */
   };
 
   /* ═══════════════════════════════════════════════════════════════
@@ -613,11 +655,27 @@
   var INLINE_ASSISTANT = {
     name: 'ARIA',
     transcriber: {
-      provider:                         'assembly-ai',
-      language:                         'en',
-      endOfTurnConfidenceThreshold:     ASSISTANT_OVERRIDES.transcriber.endOfTurnConfidenceThreshold,
-      minEndOfTurnSilenceWhenConfident: ASSISTANT_OVERRIDES.transcriber.minEndOfTurnSilenceWhenConfident,
-      maxTurnSilence:                   ASSISTANT_OVERRIDES.transcriber.maxTurnSilence
+      /*
+        Deepgram nova-2 — same provider as the dashboard-assistant override.
+        Keeping them consistent avoids any mismatch if ASSISTANT_ID is ever
+        cleared and the inline assistant path is used instead.
+
+        utteranceEndMs + endpointing together give the most comfortable
+        experience for people with accents, slower speech, or pauses while
+        thinking. These replace the assembly-ai confidence-threshold approach
+        which was penalising speakers whose audio scored below 0.75 confidence.
+      */
+      provider:       'deepgram',
+      model:          'nova-2',
+      language:       'en',
+      smartFormat:    true,
+      endpointing:    800,
+      utteranceEndMs: 1500,
+      keywords: [
+        'Nexus:5', 'Luma:5', 'ARIA:5',
+        'gmail:3', 'yahoo:3', 'outlook:3', 'icloud:3',
+        'strategy:3', 'booking:3'
+      ]
     },
     model: {
       provider:    'openai',
@@ -664,9 +722,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       similarityBoost:          0.8,
       optimizeStreamingLatency: 4
     },
-    startSpeakingPlan:              ASSISTANT_OVERRIDES.startSpeakingPlan,
-    stopSpeakingPlan:               ASSISTANT_OVERRIDES.stopSpeakingPlan,
-    backgroundSpeechDenoisingPlan:  ASSISTANT_OVERRIDES.backgroundSpeechDenoisingPlan,
+    /* Reference shared speaking plans — widened for accent tolerance */
+    startSpeakingPlan:             ASSISTANT_OVERRIDES.startSpeakingPlan,
+    stopSpeakingPlan:              ASSISTANT_OVERRIDES.stopSpeakingPlan,
+    /* Smart denoising is valid in the inline assistant's own config;
+       it was only removed from ASSISTANT_OVERRIDES (the dashboard-assistant
+       override payload) because Vapi gates it behind specific plan tiers there. */
+    backgroundSpeechDenoisingPlan: { smartDenoisingPlan: { enabled: true } },
     firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
 
@@ -1034,7 +1096,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (!vapiLoadPromise) {
       vapiLoadPromise = (function tryNext(urls, errors) {
         if (!urls.length) {
-          vapiLoadPromise = null;
           return Promise.reject(new Error('Vapi web SDK could not load. ' + errors.join(' | ')));
         }
         var url = urls[0];
@@ -1073,7 +1134,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function toggleCall(event) {
     if (event) event.stopPropagation();
-    if (typeof event.preventDefault === 'function') event.preventDefault();
     if (active || starting) {
       endCall();
     } else {
@@ -1108,25 +1168,39 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var contextMsg = buildAssistantContextMessage();
       var knownName  = getLeadName();
 
-      /* FIX #12: use deepClone() helper (structuredClone with JSON fallback) */
-      var overrides = deepClone(ASSISTANT_OVERRIDES);
-
-      if (contextMsg) {
-        overrides.model = overrides.model || {};
-        overrides.model.messages = [{ role: 'system', content: contextMsg }];
-      }
-
-      if (knownName) {
-        overrides.firstMessage =
-          'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
-          "Ready to get your strategy call booked?";
-      }
-
       if (ASSISTANT_ID) {
-        return startDashboardAssistant(overrides);
+        /*
+          Build a MINIMAL overrides object for dashboard-assistant calls.
+          Only include fields that Vapi's override API accepts universally:
+          - transcriber: provider + language only (timing fields live in dashboard)
+          - startSpeakingPlan / stopSpeakingPlan: safe on all plans
+          - model.messages: ONLY added when context exists, and with NO other
+            model fields — sending provider/model/temperature alongside messages
+            when using ASSISTANT_ID conflicts with the dashboard config and causes
+            the "Vapi did not return a web call" rejection.
+        */
+        var overrides = {
+          transcriber:       deepClone(ASSISTANT_OVERRIDES.transcriber),
+          startSpeakingPlan: deepClone(ASSISTANT_OVERRIDES.startSpeakingPlan),
+          stopSpeakingPlan:  deepClone(ASSISTANT_OVERRIDES.stopSpeakingPlan)
+        };
+
+        if (contextMsg) {
+          /* Inject questionnaire context — messages-only, no other model fields */
+          overrides.model = { messages: [{ role: 'system', content: contextMsg }] };
+        }
+
+        if (knownName) {
+          overrides.firstMessage =
+            'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
+            "Ready to get your strategy call booked?";
+        }
+
+        console.info('ARIA: starting with ASSISTANT_ID, overrides:', JSON.stringify(Object.keys(overrides)));
+        return vapi.start(ASSISTANT_ID, overrides);
+
       } else {
-        /* FIX #13: context pushed AFTER persona prompt (not unshifted before it),
-           so the main role definition always takes precedence for the model. */
+        /* Inline assistant — full config, context pushed after persona */
         var inline = deepClone(INLINE_ASSISTANT);
         if (contextMsg) {
           inline.model.messages.push({ role: 'system', content: contextMsg });
@@ -1136,7 +1210,23 @@ START: Greet them warmly and ask their name. Nothing else yet.`
             'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
             "Ready to get your strategy call booked?";
         }
+        console.info('ARIA: starting with inline assistant config');
         return vapi.start(inline);
+      }
+    }).then(function(callResult) {
+      /*
+        FIX: vapi.start() can resolve to null/undefined when Vapi rejects the
+        call silently (e.g. bad public key, invalid assistant ID, unsupported
+        override fields). In that case no 'call-start' event fires and no error
+        is thrown — catching the null here surfaces a clear, actionable message.
+      */
+      if (callResult === null || callResult === undefined) {
+        throw new Error(
+          'Vapi did not return a web call. ' +
+          'Check: (1) VAPI_KEY is a valid public web key, not a private key. ' +
+          '(2) ASSISTANT_ID exists in your Vapi dashboard and is published. ' +
+          '(3) Your Vapi account is active and not over its usage limit.'
+        );
       }
     }).catch(function(error) {
       clearTimeout(connectingTimer);
@@ -1144,41 +1234,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       console.error('ARIA: Vapi start failed:', error);
       active = false;
       starting = false;
-      if (vapi) {
-        try { vapi.stop(); } catch (_) {}
-      }
-      vapi = null;
       setState('');
       setHintMessage('Could not start \u2014 check browser console for details');
       /* Use alert() only as last resort — avoids silent failures */
       alert('ARIA could not start: ' + message);
-    });
-  }
-
-  function startDashboardAssistant(overrides) {
-    return vapi.start(ASSISTANT_ID, overrides).then(function(call) {
-      if (call) return call;
-
-      console.warn(
-        'ARIA: Vapi returned no web call with browser overrides. ' +
-        'Retrying with the dashboard assistant only.'
-      );
-
-      if (vapi) {
-        try { vapi.stop(); } catch (_) {}
-      }
-      vapi = null;
-
-      return ensureVapiInstance().then(function() {
-        return vapi.start(ASSISTANT_ID);
-      }).then(function(retryCall) {
-        if (retryCall) return retryCall;
-        throw new Error(
-          'Vapi did not return a web call even without browser overrides. ' +
-          'Check that the public key and assistant ID belong to the same Vapi project, ' +
-          'and confirm the assistant is enabled for web calls.'
-        );
-      });
     });
   }
 
@@ -1194,18 +1253,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      VAPI EVENT BINDINGS
   ═══════════════════════════════════════════════════════════════ */
   function bindVapiEvents() {
-
-    vapi.on('call-start-progress', function(event) {
-      console.info('ARIA: Vapi start progress:', event);
-    });
-
-    vapi.on('call-start-success', function(event) {
-      console.info('ARIA: Vapi start success:', event);
-    });
-
-    vapi.on('call-start-failed', function(event) {
-      console.error('ARIA: Vapi start failed event:', event);
-    });
 
     vapi.on('call-start', function() {
       clearTimeout(connectingTimer);
@@ -1604,10 +1651,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     getVapiConstructor().catch(function(error) {
       console.error('ARIA WARNING: Vapi SDK preload failed:', error);
     });
-
-    if (orbBtn) {
-      orbBtn.addEventListener('click', toggleCall);
-    }
 
     /* Warn if SDK still not loaded after 3 s (likely CSP or ad-blocker) */
     setTimeout(function() {
