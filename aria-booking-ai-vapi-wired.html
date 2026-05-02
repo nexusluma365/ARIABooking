@@ -600,9 +600,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      Production calls should prefer the saved Vapi assistant. Creating
      an inline/transient assistant from the browser can be rejected by
      Vapi account/security policy before a call exists, which surfaces
-     as POST /call/web 403. Saved-assistant calls use only schema-safe
-     variableValues; timing/transcriber settings should live on the
-     Vapi dashboard assistant to avoid POST /call/web 400 rejections.
+     as POST /call/web 403. Saved-assistant calls intentionally send no
+     browser overrides; timing/transcriber/context settings should live
+     on the Vapi dashboard assistant or be injected after call-start when
+     the SDK supports addMessage().
   ───────────────────────────────────────────────────────────── */
   function buildAssistantContextMessage() {
     var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
@@ -616,40 +617,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return "IMPORTANT — context captured from the user's questionnaire before this call. Treat these as prefilled lead details and do NOT ask for them again. Use their name naturally from the first word. If name or email is already provided here, only confirm it briefly if needed, then continue collecting the missing details and an actual strategy-call booking time. Details: " + parts.join(' | ');
   }
 
-  function buildAssistantOverrides(contextMsg) {
-    var context = getStoredContext();
-    var q = context.questionnaire || {};
-    var overrides = {};
-    var variableValues = {
-      name: q.name || bookingLead.name || '',
-      firstName: getLeadName() || '',
-      email: q.email || context.homepageEmail || bookingLead.email || '',
-      challenge: q.challenge || bookingLead.pain || '',
-      aiHelp: q.aiHelp || bookingLead.service || '',
-      contactProcess: q.contactProcess || '',
-      systemStatus: q.systemStatus || '',
-      questionnaireContext: contextMsg || ''
-    };
-    Object.keys(variableValues).forEach(function(key) {
-      if (!variableValues[key]) delete variableValues[key];
-    });
-    if (Object.keys(variableValues).length) overrides.variableValues = variableValues;
-    return Object.keys(overrides).length ? overrides : null;
-  }
-
-  function startSavedAssistantWithFallback(overrides) {
-    var startWithoutOverrides = function() {
-      console.info('ARIA: retrying saved ASSISTANT_ID without browser overrides');
-      return vapi.start(ASSISTANT_ID);
-    };
-    if (!overrides) return startWithoutOverrides();
-    return vapi.start(ASSISTANT_ID, overrides).catch(function(error) {
-      if (getHttpStatus(error) === 400) {
-        console.warn('ARIA: saved assistant rejected browser overrides; retrying without overrides.', error);
-        return startWithoutOverrides();
-      }
-      throw error;
-    });
+  function startSavedAssistant() {
+    console.info('ARIA: starting saved ASSISTANT_ID without browser overrides');
+    return vapi.start(ASSISTANT_ID);
   }
 
   function injectAssistantContextIfSupported() {
@@ -718,9 +688,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var useInline = FORCE_INLINE_ASSISTANT || !ASSISTANT_ID;
 
       if (ASSISTANT_ID && !useInline) {
-        var overrides = buildAssistantOverrides(contextMsg);
-        console.info('ARIA: starting with saved ASSISTANT_ID' + (contextMsg ? ' + questionnaire overrides' : ''));
-        return startSavedAssistantWithFallback(overrides);
+        return startSavedAssistant();
 
       } else {
         /* Inline assistant remains available only as an explicit fallback. */
