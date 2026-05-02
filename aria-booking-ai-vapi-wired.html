@@ -291,10 +291,6 @@
        utterance ends before sending to the LLM. 700ms leaves room for
        natural breath pauses without cutting off mid-thought.              */
     utteranceEndMs: 700,
-    /* FIX 1c — interimResults: true sends partial transcripts immediately
-       so the orb UI reacts visually the moment you start speaking,
-       eliminating the "is it listening?" uncertainty.                     */
-    interimResults: true,
     keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
   };
 
@@ -329,11 +325,13 @@
      that works as the second argument to vapi.start(ASSISTANT_ID, overrides).
      Previously this was called with NO second argument, silently discarding
      all transcriber tuning and questionnaire context.                      */
+  /* ASSISTANT_OVERRIDES — only Vapi-validated safe fields for the
+     second-argument override path. model and backgroundSpeechDenoisingPlan
+     both cause server-side schema rejection when assistant ID is used.   */
   var ASSISTANT_OVERRIDES = {
     transcriber: TRANSCRIBER_CONFIG,
     startSpeakingPlan: SPEAKING_PLAN_CONFIG,
-    stopSpeakingPlan: STOP_SPEAKING_PLAN_CONFIG,
-    backgroundSpeechDenoisingPlan: { smartDenoisingPlan: { enabled: true } }
+    stopSpeakingPlan: STOP_SPEAKING_PLAN_CONFIG
   };
 
   var INLINE_ASSISTANT = {
@@ -643,20 +641,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         ────────────────────────────────────────────────────────── */
         var overrides = deepClone(ASSISTANT_OVERRIDES);
 
-        /* Inject questionnaire context as an additional system message.
-           The cloud assistant already has its main system prompt; this
-           prepends the user's known data so ARIA never re-asks for info
-           the user already provided in the form.                        */
-        if (contextMsg) {
-          overrides.model = { messages: [{ role: 'system', content: contextMsg }] };
-        }
-
-        /* Personalise the greeting when we already know the caller's name */
-        if (knownName) {
-          overrides.firstMessage = 'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. Ready to lock in your strategy call?";
-        }
-
-        console.info('ARIA: starting with ASSISTANT_ID + fast-timing overrides' + (contextMsg ? ' + questionnaire context' : ''));
+        /* NOTE: model.messages and firstMessage overrides are intentionally
+           omitted from the ASSISTANT_ID path — passing a partial model object
+           (no provider/model fields) causes Vapi server-side schema rejection.
+           The cloud assistant owns its own system prompt and first message.
+           Questionnaire context is surfaced through the lead detection layer. */
+        console.info('ARIA: starting with ASSISTANT_ID + fast-timing overrides');
         return vapi.start(ASSISTANT_ID, overrides);
 
       } else {
@@ -667,8 +657,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         console.info('ARIA: starting with inline assistant config');
         return vapi.start(inline);
       }
-    }).then(function(callResult) {
-      if (callResult===null||callResult===undefined) { console.warn('ARIA: vapi.start() returned no call object; waiting for call-start event.'); }
+    }).then(function(_callResult) {
+      /* vapi.start() returning null/undefined is normal — call-start event is the real signal */
     }).catch(function(error) {
       clearTimeout(connectingTimer);
       var message = readableError(error); console.error('ARIA: Vapi start failed:', error);
