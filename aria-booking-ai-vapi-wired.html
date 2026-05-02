@@ -401,10 +401,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   var vapi = null, active = false, starting = false, finishing = false;
   var connectingTimer = null, backendSyncTimer = null, micWatchdogTimer = null;
+  var startupErrorTimer = null;
   var completionRedirectTimer = null;
   var lastTranscriptKey = '', lastUserTranscriptAt = 0;
   var callEndHandled = false;
   var redirectStarted = false;
+  /* Tracks consecutive recoverable errors mid-call; if > threshold,
+     we assume the call is silently dead and do a clean teardown.    */
+  var recoverableErrorCount = 0;
+  var MAX_RECOVERABLE_ERRORS = 5;
 
   /* FIX 9: Track the last conversation-update key separately so it
      never pre-empts the UI bubble from the real transcript final event. */
@@ -709,9 +714,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   function bindVapiEvents() {
 
     vapi.on('call-start', function() {
-      clearTimeout(connectingTimer);
+      clearTimeout(connectingTimer); clearTimeout(startupErrorTimer);
       starting=false; active=true; finishing=false; lastUserTranscriptAt=0;
-      callEndHandled=false; redirectStarted=false;
+      callEndHandled=false; redirectStarted=false; recoverableErrorCount=0;
       lastTranscriptKey=''; lastConvUpdateKey='';
       clearTimeout(completionRedirectTimer);
       setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
@@ -747,7 +752,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
     });
 
-    vapi.on('speech-start', function() { removeThinking(); setState('speaking'); });
+    vapi.on('speech-start', function() { removeThinking(); setState('speaking'); recoverableErrorCount = 0; });
     vapi.on('speech-end', function() {
       setState('listening');
       ensureMicUnmuted('speech-end');
@@ -831,24 +836,108 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (msgType === 'conversation-update') { handleConversationUpdate(message); }
     });
 
-    /* ─────────────────────────────────────────────────────────
-       ERROR HANDLER
-       FIX 5: Fatal path now nulls vapi so next tap gets a fresh
-       instance with events correctly bound. Without this, the dead
-       instance was reused and no call events ever fired on retry.
-    ───────────────────────────────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────────────
+       ERROR HANDLER — hardened against empty/null Vapi error objects
+       ─────────────────────────────────────────────────────────────────
+       Root cause of "ARIA: Vapi error received: Object {}":
+         Vapi/Daily.co emits error events with no fields for several
+         benign internal lifecycle events: ICE renegotiation, Daily
+         participant-left forwarding, audio track blips, and SDK
+         event-serialisation mismatches. getErrorText({}) returns ''
+         so isMeetingEndedError and isFatalVapiError both return false.
+
+       Fixed paths:
+         0) callEndHandled guard — drop late-arriving buffered errors
+            that arrive after a clean teardown.
+         1) Empty error during STARTUP → 2 s grace period; if call-start
+            fires in that window, the timer clears harmlessly. Prevents
+            a benign startup flicker from destroying the session.
+         2) Empty error during ACTIVE CALL → increment counter; after
+            MAX_RECOVERABLE_ERRORS consecutive hits, assume dead call
+            and tear down cleanly with a friendly re-tap message.
+         3) isMeetingEndedError → clean teardown (unchanged).
+         4) isFatalVapiError + non-empty → hard teardown (unchanged).
+         5) Other non-fatal non-empty → recoverable (unchanged).
+         6) vapi=null ONLY on confirmed fatal/dead-call paths.
+    ─────────────────────────────────────────────────────────────── */
     vapi.on('error', function(error) {
+
+      /* 0 — Drop errors that arrive after the call is already done */
+      if (callEndHandled) {
+        console.info('ARIA: post-teardown error ignored (call already ended).');
+        return;
+      }
+
       clearTimeout(connectingTimer);
       clearTimeout(micWatchdogTimer);
 
-      console.warn('ARIA: Vapi error received:', error);
+      /* Diagnostic snapshot — serialize what we can for debugging */
+      try {
+        console.warn('ARIA: Vapi error received:', {
+          type: error && error.type,
+          stage: error && error.stage,
+          message: error && (error.message || error.msg || error.errorMsg),
+          code: error && error.code,
+          status: error && error.status,
+          raw: error ? JSON.stringify(error) : String(error),
+          active: active,
+          starting: starting
+        });
+      } catch(_) {
+        console.warn('ARIA: Vapi error received (unserializable object)');
+      }
 
+      /* 3 — Meeting-ended teardown (highest priority, checked first) */
       if (isMeetingEndedError(error)) {
         handleMeetingEndedFromError(error);
         return;
       }
 
+      /* 1 — Empty/unknown error DURING STARTUP (before call-start fired) */
+      if (isEmptyError(error) && starting && !active) {
+        console.info('ARIA: Empty error during startup — 2 s grace period before failing.');
+        clearTimeout(startupErrorTimer);
+        startupErrorTimer = setTimeout(function() {
+          /* If call-start has fired by now, active=true — bail out cleanly */
+          if (active || callEndHandled) return;
+          console.warn('ARIA: Grace period expired with no call-start — startup failed.');
+          starting = false;
+          if (vapi) { try { vapi.stop(); } catch(_) {} }
+          vapi = null;
+          setState('');
+          setHintMessage('Could not connect \u2014 tap the orb to try again');
+          syncToSheets('startup-error');
+        }, 2000);
+        return;
+      }
+
+      /* 2 — Empty/unknown error DURING ACTIVE CALL */
+      if (isEmptyError(error) && active) {
+        recoverableErrorCount++;
+        if (recoverableErrorCount <= MAX_RECOVERABLE_ERRORS) {
+          console.info('ARIA: Benign empty error #' + recoverableErrorCount + '/' + MAX_RECOVERABLE_ERRORS + ' — keeping call alive.');
+          scheduleMicWatchdog();
+          setState('listening');
+          /* No visible hint change — avoid alarming the visitor for internal blips */
+          syncToSheets('call-error-benign');
+          return;
+        }
+        /* Too many in a row — call is silently dead */
+        console.warn('ARIA: ' + MAX_RECOVERABLE_ERRORS + ' consecutive empty errors — assuming dead call.');
+        callEndHandled = true;
+        active = false; starting = false;
+        removeThinking(); finalizePartialTranscript();
+        setState('');
+        setHintMessage('Connection dropped \u2014 tap the orb to reconnect');
+        saveLeadSnapshot();
+        syncToSheets('call-dead', { keepalive: true, preferBeacon: true });
+        vapi = null;
+        return;
+      }
+
+      /* 5 — Non-empty recoverable error during active call */
       if (active && !isFatalVapiError(error)) {
+        recoverableErrorCount++;
         scheduleMicWatchdog();
         setState('listening');
         setHintMessage('Still connected \u2014 keep speaking naturally');
@@ -856,14 +945,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         return;
       }
 
-      /* Fatal error — full teardown */
+      /* 4/6 — Fatal or pre-start non-empty error — full teardown */
+      callEndHandled = true;
       active = false; starting = false;
       removeThinking();
       setState('');
-      setHintMessage('Something went wrong \u2014 please try again');
+      setHintMessage('Something went wrong \u2014 tap the orb to try again');
       syncToSheets('call-error');
-      /* FIX 5: Null dead instance so ensureVapiInstance() creates a
-         fresh one (with bindVapiEvents) on the next call attempt. */
       vapi = null;
     });
   }
@@ -895,6 +983,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }, 14000);
   }
 
+  /* ─────────────────────────────────────────────────────────────
+     getErrorText — extract all meaningful text from any error shape.
+     ─────────────────────────────────────────────────────────────
+     Covers: plain string, Error instances (non-enumerable .message),
+     Vapi/Daily SDK objects, nested error wrappers, and the common
+     `errorMsg` field used by some Vapi SDK versions.
+     Filters bare `{}` from collected strings so it doesn't fool
+     isEmptyError into thinking there's meaningful content.
+  ───────────────────────────────────────────────────────────── */
   function getErrorText(error) {
     if (!error) return '';
     if (typeof error === 'string') return error;
@@ -905,12 +1002,31 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (typeof obj === 'string')  { collected.push(obj); return; }
       if (typeof obj === 'number' || typeof obj === 'boolean') { collected.push(String(obj)); return; }
       if (typeof obj !== 'object') return;
-      var fields = ['message','msg','name','type','stage','reason','code','status','description','detail','error','cause'];
+      /* errorMsg added — used by some Vapi SDK versions */
+      var fields = ['message','msg','name','type','stage','reason','code','status','description','detail','error','cause','errorMsg'];
       for (var i=0; i<fields.length; i++) { if (obj[fields[i]] != null) walk(obj[fields[i]], depth+1); }
-      try { collected.push(JSON.stringify(obj)); } catch(_) {}
+      try {
+        var json = JSON.stringify(obj);
+        /* Filter bare empty-object strings — they carry no signal */
+        if (json && json !== '{}' && json !== '[]') collected.push(json);
+      } catch(_) {}
     }
     walk(error, 0);
-    return collected.join(' ');
+    /* Capture non-enumerable Error prototype properties */
+    if (error && typeof error.message === 'string' && error.message) collected.push(error.message);
+    if (error && typeof error.name === 'string' && error.name && error.name !== 'Object' && error.name !== 'Error') {
+      collected.push(error.name);
+    }
+    return collected.filter(Boolean).join(' ').trim();
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     isEmptyError — true when getErrorText yields nothing meaningful.
+     Handles {}, null, undefined, and objects whose only serialised
+     form is '{}' (Daily.co internal lifecycle events fall here).
+  ───────────────────────────────────────────────────────────── */
+  function isEmptyError(error) {
+    return !error || getErrorText(error).replace(/[\s{}"\[\]]+/g, '').length === 0;
   }
 
   function isMeetingEndedError(error) {
