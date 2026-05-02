@@ -693,13 +693,45 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       /* vapi.start() returning null/undefined is normal — call-start event is the real signal */
     }).catch(function(error) {
       clearTimeout(connectingTimer);
-      var message = readableError(error); console.error('ARIA: Vapi start failed:', error);
-      active=false; starting=false;
+      console.error('ARIA: Vapi start failed:', error);
+      active = false; starting = false;
       if (vapi) { try { vapi.stop(); } catch(_) {} }
-      /* FIX 5: Null vapi on start failure so fresh instance on next tap */
       vapi = null;
-      setState(''); setHintMessage('Could not start \u2014 check browser console for details');
-      alert('ARIA could not start: ' + message);
+      setState('');
+
+      var status = getHttpStatus(error);
+
+      if (status === 403) {
+        /* 403 is always a Vapi auth/config issue — never a transient error.
+           Show an actionable checklist instead of a generic message.        */
+        setHintMessage('API key rejected (403) \u2014 check Vapi dashboard');
+        console.error(
+          'ARIA 403 CHECKLIST:\n' +
+          '1. Confirm VAPI_KEY is your PUBLIC key (not private) from app.vapi.ai → Account\n' +
+          '2. In Vapi dashboard → Assistant → check the Assistant ID matches ASSISTANT_ID\n' +
+          '3. Vapi dashboard → Settings → Security → check Allowed Origins includes this domain\n' +
+          '4. Check account is active and within call limits at app.vapi.ai → Billing\n' +
+          '5. Current VAPI_KEY in use: ' + String(VAPI_KEY || '(empty)').slice(0,8) + '...'
+        );
+        alert(
+          'ARIA: 403 Forbidden from Vapi API.\n\n' +
+          'Common causes:\n' +
+          '\u2022 Wrong VAPI_KEY (use your PUBLIC key from app.vapi.ai)\n' +
+          '\u2022 This domain is not in Vapi \u2192 Settings \u2192 Allowed Origins\n' +
+          '\u2022 Assistant ID does not belong to this account\n' +
+          '\u2022 Account billing issue\n\n' +
+          'Key prefix in use: ' + String(VAPI_KEY || '').slice(0, 8) + '\u2026'
+        );
+      } else if (status === 401) {
+        setHintMessage('Invalid API key (401) \u2014 update VAPI_KEY');
+        alert('ARIA: 401 Unauthorized — VAPI_KEY is invalid or missing. Update it in the page config.');
+      } else if (status && status >= 500) {
+        setHintMessage('Vapi server error (' + status + ') \u2014 tap orb to retry');
+        alert('ARIA: Vapi returned a ' + status + ' server error. This is on their end — retry in a moment.');
+      } else {
+        setHintMessage('Could not start \u2014 check browser console for details');
+        alert('ARIA could not start: ' + readableError(error));
+      }
     });
   }
 
@@ -950,7 +982,17 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       active = false; starting = false;
       removeThinking();
       setState('');
-      setHintMessage('Something went wrong \u2014 tap the orb to try again');
+
+      var httpStatus = getHttpStatus(error);
+      if (httpStatus === 403) {
+        setHintMessage('API key rejected (403) \u2014 check Vapi dashboard');
+        console.error('ARIA 403: Check VAPI_KEY, Allowed Origins, Assistant ID, and billing at app.vapi.ai');
+      } else if (httpStatus === 401) {
+        setHintMessage('Invalid API key (401) \u2014 update VAPI_KEY in config');
+      } else {
+        setHintMessage('Something went wrong \u2014 tap the orb to try again');
+      }
+
       syncToSheets('call-error');
       vapi = null;
     });
@@ -1058,6 +1100,22 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var type  = String((error&&error.type)  || '');
     var stage = String((error&&error.stage) || '');
     return /start|join|reconnect|web-call/i.test(type+' '+stage);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     getHttpStatus — extract HTTP status code from any error shape.
+     Covers: axios response wrapper, fetch Response, Vapi custom
+     fields (statusCode), and parsing it from message strings.
+  ───────────────────────────────────────────────────────────── */
+  function getHttpStatus(error) {
+    if (!error) return null;
+    if (error.status)     return Number(error.status);
+    if (error.statusCode) return Number(error.statusCode);
+    if (error.response && error.response.status) return Number(error.response.status);
+    if (error.error && error.error.status)        return Number(error.error.status);
+    var msg = String(error.message || error.msg || error.errorMsg || error || '');
+    var m = msg.match(/\b(4\d{2}|5\d{2})\b/);
+    return m ? Number(m[1]) : null;
   }
 
   function handleFinalTranscript(message) {
