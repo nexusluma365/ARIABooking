@@ -559,7 +559,13 @@
 
   var VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
-  var NEXT_STEP_URL = 'aria-strategy-apple.html';
+
+  /* ─── REDIRECT TARGET ────────────────────────────────────────────
+     Updated to the full absolute URL so the redirect works correctly
+     from any domain or path the page is served from.
+  ──────────────────────────────────────────────────────────────── */
+  var NEXT_STEP_URL = 'https://nexusluma.com/aria-strategy-apple';
+
   var VAPI_SDK_URLS = [
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm',
     'https://esm.sh/@vapi-ai/web@2.5.2?bundle',
