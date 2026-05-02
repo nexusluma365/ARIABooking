@@ -529,7 +529,6 @@
         id="orbBtn"
         aria-label="Start ARIA booking assistant — activates microphone"
         aria-pressed="false"
-        onclick="toggleCall(event)"
       >
         <div class="loader-wrapper" aria-hidden="true">
           <span class="loader-letter">A</span>
@@ -561,8 +560,9 @@
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
   var NEXT_STEP_URL = 'aria-strategy-apple.html';
   var VAPI_SDK_URLS = [
-    'https://esm.sh/@vapi-ai/web@2?bundle',
-    'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
+    'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm',
+    'https://esm.sh/@vapi-ai/web@2.5.2?bundle',
+    'https://esm.sh/@vapi-ai/web@2?bundle'
   ];
 
   /* Google Apps Script webhook */
@@ -1034,6 +1034,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (!vapiLoadPromise) {
       vapiLoadPromise = (function tryNext(urls, errors) {
         if (!urls.length) {
+          vapiLoadPromise = null;
           return Promise.reject(new Error('Vapi web SDK could not load. ' + errors.join(' | ')));
         }
         var url = urls[0];
@@ -1072,6 +1073,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ═══════════════════════════════════════════════════════════════ */
   function toggleCall(event) {
     if (event) event.stopPropagation();
+    if (typeof event.preventDefault === 'function') event.preventDefault();
     if (active || starting) {
       endCall();
     } else {
@@ -1136,12 +1138,21 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         }
         return vapi.start(inline);
       }
+    }).then(function(call) {
+      if (!call) {
+        throw new Error('Vapi did not return a web call. Check the public key, assistant ID, and assistant overrides in the Vapi dashboard.');
+      }
+      return call;
     }).catch(function(error) {
       clearTimeout(connectingTimer);
       var message = readableError(error);
       console.error('ARIA: Vapi start failed:', error);
       active = false;
       starting = false;
+      if (vapi) {
+        try { vapi.stop(); } catch (_) {}
+      }
+      vapi = null;
       setState('');
       setHintMessage('Could not start \u2014 check browser console for details');
       /* Use alert() only as last resort — avoids silent failures */
@@ -1161,6 +1172,18 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      VAPI EVENT BINDINGS
   ═══════════════════════════════════════════════════════════════ */
   function bindVapiEvents() {
+
+    vapi.on('call-start-progress', function(event) {
+      console.info('ARIA: Vapi start progress:', event);
+    });
+
+    vapi.on('call-start-success', function(event) {
+      console.info('ARIA: Vapi start success:', event);
+    });
+
+    vapi.on('call-start-failed', function(event) {
+      console.error('ARIA: Vapi start failed event:', event);
+    });
 
     vapi.on('call-start', function() {
       clearTimeout(connectingTimer);
@@ -1559,6 +1582,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     getVapiConstructor().catch(function(error) {
       console.error('ARIA WARNING: Vapi SDK preload failed:', error);
     });
+
+    if (orbBtn) {
+      orbBtn.addEventListener('click', toggleCall);
+    }
 
     /* Warn if SDK still not loaded after 3 s (likely CSP or ad-blocker) */
     setTimeout(function() {
