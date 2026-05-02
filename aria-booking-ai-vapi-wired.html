@@ -783,9 +783,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   var finishing            = false;
   var connectingTimer      = null;
   var backendSyncTimer     = null;
+  var micWatchdogTimer     = null;
   var assistantContextSent = false;
   var completionRedirectTimer = null;
   var lastTranscriptKey    = '';
+  var lastUserTranscriptAt = 0;
+  var lastMicBoostAt       = 0;
 
   var COMPLETION_PHRASE_REGEX    = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
   var TAKE_CARE_CLOSEOUT_REGEX   = /\btake care[.!?\s]*$/i;
@@ -1268,6 +1271,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function endCall() {
     starting = false;
+    clearTimeout(micWatchdogTimer);
     removeThinking();   /* FIX #17: clear thinking dots immediately on manual end */
     if (vapi) {
       try { vapi.stop(); } catch (e) { console.warn('vapi.stop() error:', e); }
@@ -1287,11 +1291,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(completionRedirectTimer);
       setState('listening');
       setHintMessage('Speak naturally \u2014 ARIA will guide you');
+      keepMicOpen('call-start');
+      scheduleMicWatchdog();
       syncToSheets('call-start');
     });
 
     vapi.on('call-end', function() {
       clearTimeout(connectingTimer);
+      clearTimeout(micWatchdogTimer);
       starting = false;
       active    = false;
       removeThinking();
@@ -1316,6 +1323,32 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     vapi.on('speech-end', function() {
       setState('listening');
+      keepMicOpen('speech-end');
+      scheduleMicWatchdog();
+    });
+
+    vapi.on('call-start-progress', function(event) {
+      console.info('ARIA: Vapi start progress:', event);
+    });
+
+    vapi.on('call-start-success', function(event) {
+      console.info('ARIA: Vapi start success:', event);
+    });
+
+    vapi.on('call-start-failed', function(event) {
+      console.error('ARIA: Vapi start failed event:', event);
+    });
+
+    vapi.on('network-quality-change', function(event) {
+      console.info('ARIA: network quality changed:', event);
+    });
+
+    vapi.on('network-connection', function(event) {
+      console.info('ARIA: network connection event:', event);
+    });
+
+    vapi.on('camera-error', function(event) {
+      console.warn('ARIA: camera/microphone device error:', event);
     });
 
     vapi.on('volume-level', function(vol) {
@@ -1343,6 +1376,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
         if (transcriptType === 'partial') {
           if (role !== 'user') return;
+          lastUserTranscriptAt = Date.now();
           var partialText = extractMessageText(message);
           if (partialText) updatePartialTranscript(partialText);
           return;
@@ -1350,6 +1384,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
         if (transcriptType === 'final') {
           var finalText = extractMessageText(message);
+          if (role === 'user') lastUserTranscriptAt = Date.now();
           if (finalText) {
             finalizePartialTranscript();
 
@@ -1387,13 +1422,66 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     vapi.on('error', function(error) {
       clearTimeout(connectingTimer);
       console.error('ARIA: Vapi error:', error);
+
+      if (active && !isFatalVapiError(error)) {
+        keepMicOpen('recoverable-vapi-error');
+        setState('listening');
+        setHintMessage('Still connected \u2014 keep speaking naturally');
+        syncToSheets('call-error');
+        return;
+      }
+
       active   = false;
       starting = false;
+      clearTimeout(micWatchdogTimer);
       removeThinking();
       setState('');
       setHintMessage('Something went wrong \u2014 check the browser console');
       syncToSheets('call-error');
     });
+  }
+
+  function keepMicOpen(reason) {
+    if (!vapi || !active) return;
+
+    try {
+      if (typeof vapi.setMuted === 'function') {
+        vapi.setMuted(false);
+      }
+    } catch (e) {
+      console.warn('ARIA: could not unmute mic after ' + reason + ':', e);
+    }
+
+    try {
+      if (typeof vapi.increaseMicLevel === 'function' && Date.now() - lastMicBoostAt > 25000) {
+        lastMicBoostAt = Date.now();
+        vapi.increaseMicLevel(1.35).catch(function(error) {
+          console.warn('ARIA: mic boost skipped after ' + reason + ':', error);
+        });
+      }
+    } catch (e) {
+      console.warn('ARIA: mic boost unavailable after ' + reason + ':', e);
+    }
+  }
+
+  function scheduleMicWatchdog() {
+    clearTimeout(micWatchdogTimer);
+    if (!active) return;
+
+    micWatchdogTimer = setTimeout(function() {
+      if (!active) return;
+      if (!lastUserTranscriptAt || Date.now() - lastUserTranscriptAt > 18000) {
+        keepMicOpen('mic-watchdog');
+        console.warn('ARIA: no user transcript detected recently; refreshed mic state.');
+      }
+      scheduleMicWatchdog();
+    }, 12000);
+  }
+
+  function isFatalVapiError(error) {
+    var type = String((error && error.type) || '');
+    var stage = String((error && error.stage) || '');
+    return /start|join|reconnect|web-call/i.test(type + ' ' + stage);
   }
 
   /* ═══════════════════════════════════════════════════════════════
