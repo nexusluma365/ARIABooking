@@ -559,6 +559,7 @@
 
   var VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
+  var FORCE_INLINE_ASSISTANT = true;
 
   /* ─── REDIRECT TARGET ────────────────────────────────────────────
      Updated to the full absolute URL so the redirect works correctly
@@ -626,8 +627,8 @@
       model:          'nova-2',
       language:       'en',
       smartFormat:    true,
-      endpointing:    800,
-      utteranceEndMs: 1500,
+      endpointing:    1200,
+      utteranceEndMs: 2200,
       keywords: [
         'Nexus:5', 'Luma:5', 'ARIA:5',
         'gmail:3', 'yahoo:3', 'outlook:3', 'icloud:3',
@@ -641,17 +642,17 @@
         while a careful speaker is still mid-thought.
         waitSeconds raised from 0.8 → 1.0 for the same reason.
       */
-      waitSeconds: 1.0,
+      waitSeconds: 1.2,
       transcriptionEndpointingPlan: {
-        onPunctuationSeconds:   0.9,
-        onNoPunctuationSeconds: 3.5,
-        onNumberSeconds:        3.0
+        onPunctuationSeconds:   1.2,
+        onNoPunctuationSeconds: 4.5,
+        onNumberSeconds:        4.0
       }
     },
     stopSpeakingPlan: {
-      numWords:       3,
-      voiceSeconds:   0.5,
-      backoffSeconds: 1.2
+      numWords:       4,
+      voiceSeconds:   0.8,
+      backoffSeconds: 1.5
     }
     /* model.messages injected dynamically in startCall() when context exists.
        backgroundSpeechDenoisingPlan — set directly in Vapi dashboard. */
@@ -677,8 +678,8 @@
       model:          'nova-2',
       language:       'en',
       smartFormat:    true,
-      endpointing:    800,
-      utteranceEndMs: 1500,
+      endpointing:    ASSISTANT_OVERRIDES.transcriber.endpointing,
+      utteranceEndMs: ASSISTANT_OVERRIDES.transcriber.utteranceEndMs,
       keywords: [
         'Nexus:5', 'Luma:5', 'ARIA:5',
         'gmail:3', 'yahoo:3', 'outlook:3', 'icloud:3',
@@ -704,7 +705,7 @@ CONVERSATION RULES:
 ACCURACY & CONFIRMATION RULES — follow these every time without exception:
 - NAME: After the person gives their name, always repeat it back immediately. Example: "Nice to meet you, Sarah — did I get that right?" If they correct you, apologise briefly and confirm the corrected version.
 - BUSINESS NAME: After they say their business name, read it back exactly. Example: "Got it — so the business is Blue Ridge Media, correct?"
-- EMAIL: This is critical. After they give their email, spell it out letter by letter including the domain. Example: "Let me read that back — S-A-R-A-H at B-L-U-E-R-I-D-G-E dot com — is every letter right?" Wait for explicit confirmation before moving on.
+- EMAIL: This is critical. Do not guess or infer an email from a messy transcript. Ask them to spell the part before the at sign one character at a time, then ask for the domain one character at a time, then ask for the ending such as dot com. Repeat it back slowly using letters and words, for example: "Let me read that back — S as in Sam, A as in Apple, R as in Robert, A as in Apple, H as in Henry, at Gmail dot com — is every character right?" Wait for explicit confirmation before moving on. If even one letter is unclear, ask for that part again.
 - LOCATION: Confirm city and state together. Example: "And you're based in Austin, Texas — is that right?"
 - AVAILABILITY: Confirm the day and time clearly. Example: "So Tuesday at 2 PM works for you — perfect, I've got that."
 - If anything sounds unclear or you aren't 100% sure of a spelling, ask them to spell it out. Example: "Could you spell that for me so I make sure I get it exactly right?"
@@ -712,6 +713,14 @@ ACCURACY & CONFIRMATION RULES — follow these every time without exception:
 
 YOUR GOAL:
 Naturally collect these required details before ending: first name, business name, city/location, email, and when they're free for a strategy call. Then explain the $197 strategy call — Nexus Luma maps their brand, booking flow, and AI system in one session.
+
+REQUIRED ORDER:
+1. Confirm name.
+2. Ask for business name and confirm it.
+3. Ask for city/location and confirm it.
+4. Ask for email using the character-by-character process above and confirm it.
+5. Ask when they are free for the strategy call and confirm day/time.
+Do not stop after the business name. Keep going until every required detail is confirmed.
 
 COMPLETION RULE:
 - Do not finish early.
@@ -1202,7 +1211,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var contextMsg = buildAssistantContextMessage();
       var knownName  = getLeadName();
 
-      if (ASSISTANT_ID) {
+      if (ASSISTANT_ID && !FORCE_INLINE_ASSISTANT) {
         /*
           Dashboard assistant path: start with the assistant ID only.
           Browser override payloads can be rejected silently by Vapi depending
@@ -1213,7 +1222,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         return vapi.start(ASSISTANT_ID);
 
       } else {
-        /* Inline assistant — full config, context pushed after persona */
+        /* Inline assistant — full repo-controlled config, context pushed after persona */
         var inline = deepClone(INLINE_ASSISTANT);
         if (contextMsg) {
           inline.model.messages.push({ role: 'system', content: contextMsg });
