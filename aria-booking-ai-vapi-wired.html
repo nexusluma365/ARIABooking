@@ -7,14 +7,7 @@
 <meta name="theme-color" content="#07189f" />
 <title>ARIA Booking Orb | Nexus Luma</title>
 <style>
-  /* ─────────────────────────────────────────────
-     RESET & BOX MODEL
-  ───────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  /* ─────────────────────────────────────────────
-     CSS VARIABLES
-  ───────────────────────────────────────────── */
   :root {
     --deep-blue:   #07189f;
     --royal-blue:  #1238c7;
@@ -24,463 +17,179 @@
     --white-soft:  rgba(255, 255, 255, 0.92);
     --white-muted: rgba(255, 255, 255, 0.66);
   }
-
-  /* ─────────────────────────────────────────────
-     BASE — html / body
-     FIX #8:  -webkit-text-size-adjust prevents iOS font inflation on rotate
-     FIX #3:  svh unit fallback chain (100vh → -webkit-fill-available → 100svh)
-  ───────────────────────────────────────────── */
-  html {
-    width: 100%;
-    height: 100%;
-    /* FIX #8 */
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-
+  html { width: 100%; height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
     width: 100%;
-    /* FIX #3 — fallback chain for Safari / older browsers */
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    min-height: 100svh;
+    min-height: 100vh; min-height: -webkit-fill-available; min-height: 100svh;
     overflow: hidden;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #07189f;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     -webkit-tap-highlight-color: transparent;
-    cursor: pointer;
-    user-select: none;
-    color: white;
-    position: relative;
-    isolation: isolate;
-    overscroll-behavior: none;
+    cursor: pointer; user-select: none; color: white;
+    position: relative; isolation: isolate; overscroll-behavior: none;
     background:
-      radial-gradient(circle at 78% 12%, rgba(138, 244, 238, 0.95) 0%, rgba(72, 203, 235, 0.75) 26%, rgba(27, 104, 210, 0.38) 47%, transparent 68%),
-      radial-gradient(circle at 22% 70%, rgba(48, 107, 255, 0.7) 0%, rgba(26, 56, 188, 0.45) 38%, transparent 64%),
+      radial-gradient(circle at 78% 12%, rgba(138,244,238,0.95) 0%, rgba(72,203,235,0.75) 26%, rgba(27,104,210,0.38) 47%, transparent 68%),
+      radial-gradient(circle at 22% 70%, rgba(48,107,255,0.7) 0%, rgba(26,56,188,0.45) 38%, transparent 64%),
       linear-gradient(123deg, #08158e 0%, #1439c6 39%, #1fa7d8 74%, #8af4ee 100%);
-    opacity: 0;
-    transform: translateY(16px);
+    opacity: 0; transform: translateY(16px);
     transition: opacity 0.55s ease, transform 0.55s cubic-bezier(.22,.8,.22,1);
   }
-
-  body.page-ready {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
+  body.page-ready { opacity: 1; transform: translateY(0); }
   body::before {
-    content: "";
-    position: fixed;
-    inset: -25%;
-    z-index: -2;
-    background:
-      radial-gradient(circle at 52% 50%, rgba(255, 255, 255, 0.18), transparent 28%),
-      radial-gradient(circle at 42% 62%, rgba(0, 12, 90, 0.35), transparent 44%);
-    filter: blur(10px);
-    opacity: 0.92;
-    will-change: transform;
-    transform: translateZ(0);
+    content: ""; position: fixed; inset: -25%; z-index: -2;
+    background: radial-gradient(circle at 52% 50%, rgba(255,255,255,0.18), transparent 28%), radial-gradient(circle at 42% 62%, rgba(0,12,90,0.35), transparent 44%);
+    filter: blur(10px); opacity: 0.92; will-change: transform; transform: translateZ(0);
   }
-
   body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background: linear-gradient(90deg, rgba(0, 5, 55, 0.35), transparent 43%, rgba(159, 255, 246, 0.2));
-    pointer-events: none;
-    will-change: transform;
-    transform: translateZ(0);
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(90deg, rgba(0,5,55,0.35), transparent 43%, rgba(159,255,246,0.2));
+    pointer-events: none; will-change: transform; transform: translateZ(0);
   }
-
-  /* ─────────────────────────────────────────────
-     LAYOUT
-  ───────────────────────────────────────────── */
-  .screen {
-    width: min(92vw, 680px);
-    min-height: 520px;
-    display: grid;
-    place-items: center;
-    text-align: center;
-    padding: 44px 22px;
-  }
-
-  /* ─────────────────────────────────────────────
-     BRAND CHIP
-  ───────────────────────────────────────────── */
+  .screen { width: min(92vw, 680px); min-height: 520px; display: grid; place-items: center; text-align: center; padding: 44px 22px; }
   .brand-chip {
-    width: 48px;
-    height: 48px;
-    display: grid;
-    place-items: center;
-    border-radius: 16px;
-    margin: 0 auto 28px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 22px 60px rgba(0, 18, 130, 0.22);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; margin: 0 auto 28px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 22px 60px rgba(0,18,130,0.22);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   }
   .brand-chip svg { width: 22px; height: 22px; opacity: 0.95; }
-
-  /* ─────────────────────────────────────────────
-     TYPOGRAPHY
-     FIX #1: font-weight: 760 is invalid CSS (only 100–900 multiples of 100 are valid).
-             Corrected to 800 which is the nearest standard heavy weight.
-  ───────────────────────────────────────────── */
   h1 {
-    font-size: clamp(2.15rem, 5vw, 4rem);
-    line-height: 0.96;
-    letter-spacing: -0.07em;
-    font-weight: 800; /* FIX #1: was 760 (invalid) */
-    color: var(--white-soft);
-    text-wrap: balance; /* Chrome 114+, FF 121+, Safari 17.5+ — harmless fallback on older */
-    margin-bottom: 12px;
-    text-shadow: 0 18px 55px rgba(0, 20, 120, 0.24);
+    font-size: clamp(2.15rem, 5vw, 4rem); line-height: 0.96; letter-spacing: -0.07em; font-weight: 800;
+    color: var(--white-soft); text-wrap: balance; margin-bottom: 12px; text-shadow: 0 18px 55px rgba(0,20,120,0.24);
   }
-
-  .subhead {
-    color: var(--white-muted);
-    font-size: clamp(0.95rem, 1.9vw, 1.1rem);
-    line-height: 1.5;
-    margin-bottom: 50px;
-  }
-
-  /* ─────────────────────────────────────────────
-     VOICE BUTTON / ORB STAGE
-     FIX #7: :focus-visible ring added for keyboard navigation
-  ───────────────────────────────────────────── */
+  .subhead { color: var(--white-muted); font-size: clamp(0.95rem, 1.9vw, 1.1rem); line-height: 1.5; margin-bottom: 50px; }
   .voice-stage {
-    appearance: none;
-    -webkit-appearance: none;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    position: relative;
-    width: 260px;
-    height: 260px;
-    margin-inline: auto;
-    display: grid;
-    place-items: center;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    border-radius: 50%;
-    outline: none; /* hidden — we replace with :focus-visible below */
+    appearance: none; -webkit-appearance: none; border: 0; background: transparent; cursor: pointer;
+    position: relative; width: 260px; height: 260px; margin-inline: auto; display: grid; place-items: center;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent; border-radius: 50%; outline: none;
   }
-
-  /* FIX #7 — visible focus ring for keyboard / assistive tech users */
-  .voice-stage:focus-visible {
-    outline: 3px solid rgba(138, 244, 238, 0.85);
-    outline-offset: 6px;
-  }
-
-  .voice-stage::before,
-  .voice-stage::after {
-    content: "";
-    position: absolute;
-    inset: 18px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    transform: scale(1);
-    opacity: 0.6;
+  .voice-stage:focus-visible { outline: 3px solid rgba(138,244,238,0.85); outline-offset: 6px; }
+  .voice-stage::before, .voice-stage::after {
+    content: ""; position: absolute; inset: 18px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.16); transform: scale(1); opacity: 0.6;
     transition: opacity 0.35s ease, transform 0.35s ease;
   }
   .voice-stage::after { inset: 0; opacity: 0.25; }
-
   body.connecting .voice-stage::before,
   body.listening  .voice-stage::before,
   body.speaking   .voice-stage::before { animation: ring-pulse 1.8s ease-out infinite; }
   body.speaking   .voice-stage::after  { animation: ring-pulse 1.15s ease-out infinite; }
-
   @keyframes ring-pulse {
     0%   { transform: scale(0.82); opacity: 0.58; }
     70%  { transform: scale(1.22); opacity: 0; }
     100% { transform: scale(1.22); opacity: 0; }
   }
-
-  /* ─────────────────────────────────────────────
-     ORB LOADER WRAPPER
-  ───────────────────────────────────────────── */
   .loader-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 180px;
-    height: 180px;
-    font-family: Inter, sans-serif;
-    font-size: 1.18rem;
-    letter-spacing: 0.02em;
-    font-weight: 520;
-    color: white;
-    border-radius: 50%;
-    background-color: transparent;
-    user-select: none;
-    transform: translateZ(0);
-    /* FIX #25: include box-shadow in will-change so GPU pre-composites it */
-    will-change: transform;
-    transition: transform 0.35s cubic-bezier(.22,.8,.22,1);
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 180px; height: 180px; font-family: Inter, sans-serif; font-size: 1.18rem;
+    letter-spacing: 0.02em; font-weight: 520; color: white; border-radius: 50%;
+    background-color: transparent; user-select: none; transform: translateZ(0);
+    will-change: transform; transition: transform 0.35s cubic-bezier(.22,.8,.22,1);
   }
-
-  /* ─────────────────────────────────────────────
-     ORB LOADER DISC
-     FIX #2: aspect-ratio unsupported on Safari <15 & older Android WebView.
-             Since parent has an explicit fixed height (180px/155px), and the
-             loader is position:absolute with top:0; left:0; width:100%,
-             replacing aspect-ratio with height:100% is fully equivalent and
-             works on every browser including IE11.
-  ───────────────────────────────────────────── */
   .loader {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%; /* FIX #2: was "aspect-ratio: 1 / 1" — height:100% is universal */
-    border-radius: 50%;
-    background-color: transparent;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-radius: 50%; background-color: transparent;
     animation: loader-rotate 2.2s linear infinite;
-    z-index: 0;
-    will-change: transform, box-shadow; /* FIX #25: declare box-shadow for compositor */
-    transform: translateZ(0);
+    z-index: 0; will-change: transform, box-shadow; transform: translateZ(0);
   }
-
   @keyframes loader-rotate {
-    0% {
-      transform: rotate(90deg);
-      box-shadow:
-        0 10px 20px 0 rgba(255,255,255,0.96) inset,
-        0 22px 30px 0 rgba(143,255,87,0.62) inset,
-        0 62px 68px 0 rgba(18,56,199,0.92) inset;
-    }
-    50% {
-      transform: rotate(270deg);
-      box-shadow:
-        0 10px 20px 0 rgba(255,255,255,0.92) inset,
-        0 20px 16px 0 rgba(67,198,238,0.78) inset,
-        0 46px 66px 0 rgba(7,24,159,0.96) inset;
-    }
-    100% {
-      transform: rotate(450deg);
-      box-shadow:
-        0 10px 20px 0 rgba(255,255,255,0.96) inset,
-        0 22px 30px 0 rgba(143,255,87,0.62) inset,
-        0 62px 68px 0 rgba(18,56,199,0.92) inset;
-    }
+    0%   { transform: rotate(90deg);  box-shadow: 0 10px 20px 0 rgba(255,255,255,0.96) inset, 0 22px 30px 0 rgba(143,255,87,0.62) inset, 0 62px 68px 0 rgba(18,56,199,0.92) inset; }
+    50%  { transform: rotate(270deg); box-shadow: 0 10px 20px 0 rgba(255,255,255,0.92) inset, 0 20px 16px 0 rgba(67,198,238,0.78) inset, 0 46px 66px 0 rgba(7,24,159,0.96) inset; }
+    100% { transform: rotate(450deg); box-shadow: 0 10px 20px 0 rgba(255,255,255,0.96) inset, 0 22px 30px 0 rgba(143,255,87,0.62) inset, 0 62px 68px 0 rgba(18,56,199,0.92) inset; }
   }
-
-  @media (max-width: 520px) {
-    .loader { animation-duration: 2.8s; }
-  }
-
+  @media (max-width: 520px) { .loader { animation-duration: 2.8s; } }
   .loader-letter {
-    display: inline-block;
-    opacity: 0.46;
-    transform: translateY(0);
-    animation: loader-letter-anim 2s infinite;
-    z-index: 1;
-    border-radius: 50ch;
-    border: none;
-    text-shadow: 0 8px 26px rgba(0, 18, 120, 0.5);
-    will-change: opacity, transform;
+    display: inline-block; opacity: 0.46; transform: translateY(0);
+    animation: loader-letter-anim 2s infinite; z-index: 1; border-radius: 50ch; border: none;
+    text-shadow: 0 8px 26px rgba(0,18,120,0.5); will-change: opacity, transform;
   }
   .loader-letter:nth-child(1) { animation-delay: 0s; }
   .loader-letter:nth-child(2) { animation-delay: 0.1s; }
   .loader-letter:nth-child(3) { animation-delay: 0.2s; }
   .loader-letter:nth-child(4) { animation-delay: 0.3s; }
-
   @keyframes loader-letter-anim {
     0%, 100% { opacity: 0.42; transform: translateY(0); }
     20%       { opacity: 1;    transform: scale(1.15); }
     40%       { opacity: 0.72; transform: translateY(0); }
   }
-
   body.connecting .loader-wrapper { animation: orb-breathe 1.8s ease-in-out infinite; }
   body.listening  .loader-wrapper { transform: scale(1.03) translateZ(0); }
   body.speaking   .loader-wrapper { transform: scale(1.08) translateZ(0); }
-  body.speaking   .loader { animation-duration: 1.05s; }
-
+  body.speaking   .loader         { animation-duration: 1.05s; }
   @keyframes orb-breathe {
     0%, 100% { transform: scale(1) translateZ(0); }
     50%       { transform: scale(1.045) translateZ(0); }
   }
-
-  /* ─────────────────────────────────────────────
-     STATUS TEXT
-     FIX #4:  contain:inline-size had poor browser support (Chrome 105+, FF 109+,
-              Safari 17+). Replaced with overflow:hidden + max-width which achieves
-              the same containment intent universally.
-     FIX #23: Screen readers don't reliably announce ::before pseudo-element content.
-              Text is now set directly via JS (see setStatusText() below).
-  ───────────────────────────────────────────── */
   .status {
-    min-height: 28px;
-    margin-top: 34px;
-    font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.76);
-    letter-spacing: -0.01em;
-    /* FIX #4: replaced contain:inline-size with universal equivalent */
-    overflow: hidden;
-    width: 100%;
-    max-width: 100%;
+    min-height: 28px; margin-top: 34px; font-size: 0.95rem;
+    color: rgba(255,255,255,0.76); letter-spacing: -0.01em; overflow: hidden; width: 100%; max-width: 100%;
   }
-
-  /* ─────────────────────────────────────────────
-     HINT PILL
-  ───────────────────────────────────────────── */
   .hint {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 14px;
-    padding: 10px 16px;
-    border-radius: 999px;
-    color: rgba(255, 255, 255, 0.8);
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    font-size: 0.82rem;
-    min-width: 240px;
-    justify-content: center;
-    transition: opacity 0.3s ease;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 14px; padding: 10px 16px; border-radius: 999px;
+    color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    font-size: 0.82rem; min-width: 240px; transition: opacity 0.3s ease;
   }
-
   .hint-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: var(--lime);
-    box-shadow: 0 0 18px rgba(143, 255, 87, 0.9);
-    flex-shrink: 0;
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--lime); box-shadow: 0 0 18px rgba(143,255,87,0.9); flex-shrink: 0;
   }
-
-  body.speaking .hint-dot {
-    animation: dot-speaking 0.7s ease-in-out infinite alternate;
-  }
+  body.speaking .hint-dot { animation: dot-speaking 0.7s ease-in-out infinite alternate; }
   @keyframes dot-speaking {
     from { transform: scale(1);    box-shadow: 0 0 18px rgba(143,255,87,0.9); }
     to   { transform: scale(1.55); box-shadow: 0 0 28px rgba(143,255,87,1);   }
   }
-
-  /* ─────────────────────────────────────────────
-     TRANSCRIPT AREA
-     FIX #6: Firefox custom scrollbar (scrollbar-width/color API)
-  ───────────────────────────────────────────── */
   .transcript-area {
-    width: 100%;
-    max-width: 500px;
-    max-height: 0;
-    overflow: hidden;
-    margin-top: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    opacity: 0;
-    transition:
-      max-height 0.45s cubic-bezier(.22,.8,.22,1),
-      opacity    0.35s ease,
-      margin-top 0.35s ease;
-    pointer-events: none;
-    /* FIX #6: Firefox scrollbar styling */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.2) transparent;
+    width: 100%; max-width: 500px; max-height: 0; overflow: hidden; margin-top: 0;
+    display: flex; flex-direction: column; gap: 8px; opacity: 0;
+    transition: max-height 0.45s cubic-bezier(.22,.8,.22,1), opacity 0.35s ease, margin-top 0.35s ease;
+    pointer-events: none; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;
   }
-
-  body.listening  .transcript-area,
-  body.speaking   .transcript-area {
-    max-height: 220px;
-    opacity: 1;
-    margin-top: 18px;
-    overflow-y: auto;
-    pointer-events: auto;
-    -webkit-overflow-scrolling: touch; /* smooth momentum scrolling on iOS */
+  body.listening .transcript-area,
+  body.speaking  .transcript-area {
+    max-height: 220px; opacity: 1; margin-top: 18px;
+    overflow-y: auto; pointer-events: auto; -webkit-overflow-scrolling: touch;
   }
-
-  /* Webkit (Chrome/Safari/Edge) custom scrollbar */
   .transcript-area::-webkit-scrollbar { width: 3px; }
   .transcript-area::-webkit-scrollbar-track { background: transparent; }
   .transcript-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 99px; }
-
-  /* ─────────────────────────────────────────────
-     CHAT MESSAGES
-  ───────────────────────────────────────────── */
   @keyframes msg-appear {
     from { opacity: 0; transform: translateY(8px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0)   scale(1);    }
   }
-
   .chat-msg {
-    max-width: 82%;
-    padding: 9px 14px;
-    border-radius: 18px;
-    font-size: 0.86rem;
-    line-height: 1.5;
-    animation: msg-appear 0.22s cubic-bezier(.22,.8,.22,1) both;
-    word-break: break-word;
+    max-width: 82%; padding: 9px 14px; border-radius: 18px; font-size: 0.86rem;
+    line-height: 1.5; animation: msg-appear 0.22s cubic-bezier(.22,.8,.22,1) both; word-break: break-word;
   }
-
   .chat-msg.aria {
-    align-self: flex-start;
-    background: rgba(255, 255, 255, 0.11);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    color: rgba(255, 255, 255, 0.93);
-    border-bottom-left-radius: 4px;
-    text-align: left;
+    align-self: flex-start; background: rgba(255,255,255,0.11);
+    border: 1px solid rgba(255,255,255,0.16); color: rgba(255,255,255,0.93);
+    border-bottom-left-radius: 4px; text-align: left;
   }
-
   .chat-msg.user {
-    align-self: flex-end;
-    background: rgba(138, 244, 238, 0.14);
-    border: 1px solid rgba(138, 244, 238, 0.24);
-    color: rgba(255, 255, 255, 0.88);
-    border-bottom-right-radius: 4px;
-    text-align: right;
+    align-self: flex-end; background: rgba(138,244,238,0.14);
+    border: 1px solid rgba(138,244,238,0.24); color: rgba(255,255,255,0.88);
+    border-bottom-right-radius: 4px; text-align: right;
   }
-
-  .chat-msg.partial {
-    opacity: 0.52;
-    animation: none;
-    font-style: italic;
-  }
-
-  /* ─────────────────────────────────────────────
-     ARIA THINKING DOTS
-  ───────────────────────────────────────────── */
+  .chat-msg.partial { opacity: 0.52; animation: none; font-style: italic; }
   .aria-thinking {
-    align-self: flex-start;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 11px 16px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 18px;
-    border-bottom-left-radius: 4px;
+    align-self: flex-start; display: flex; align-items: center; gap: 5px;
+    padding: 11px 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px; border-bottom-left-radius: 4px;
     animation: msg-appear 0.22s cubic-bezier(.22,.8,.22,1) both;
   }
-
   .aria-thinking span {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(138, 244, 238, 0.75);
-    animation: thinking-dot 1.1s ease-in-out infinite;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(138,244,238,0.75); animation: thinking-dot 1.1s ease-in-out infinite;
   }
   .aria-thinking span:nth-child(2) { animation-delay: 0.18s; }
   .aria-thinking span:nth-child(3) { animation-delay: 0.36s; }
-
   @keyframes thinking-dot {
     0%, 80%, 100% { opacity: 0.28; transform: scale(0.75); }
     40%           { opacity: 1;    transform: scale(1.15); }
   }
-
-  /* ─────────────────────────────────────────────
-     RESPONSIVE
-  ───────────────────────────────────────────── */
   @media (max-width: 520px) {
     .screen { min-height: 100vh; min-height: 100svh; padding: 34px 18px; }
     .voice-stage { width: 220px; height: 220px; }
@@ -488,26 +197,16 @@
     .subhead { margin-bottom: 34px; }
     .brand-chip { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     .hint { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-    body.listening .transcript-area,
-    body.speaking  .transcript-area { max-height: 160px; }
+    body.listening .transcript-area, body.speaking .transcript-area { max-height: 160px; }
   }
-
-  @media (hover: none), (pointer: coarse) {
-    body { cursor: default; }
-  }
-
+  @media (hover: none), (pointer: coarse) { body { cursor: default; } }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation: none !important;
-      transition: none !important;
-    }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
     body { opacity: 1; transform: none; }
   }
-
-  /* Fallback for browsers with no backdrop-filter support */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .brand-chip { background: rgba(255, 255, 255, 0.2); }
-    .hint { background: rgba(255, 255, 255, 0.18); }
+    .brand-chip { background: rgba(255,255,255,0.2); }
+    .hint { background: rgba(255,255,255,0.18); }
   }
 </style>
 </head>
@@ -540,162 +239,54 @@
         </div>
       </button>
 
-      <!-- FIX #23: status text is now set via JS textContent for reliable SR announcement -->
       <p class="status" id="statusEl" aria-live="polite" aria-atomic="true"></p>
       <div class="hint" role="status" aria-live="polite">
         <span class="hint-dot" aria-hidden="true"></span>
         <span id="hintText">Click the orb to activate mic permission and start your guided demo</span>
       </div>
-
-      <!-- Live transcript — visible only during active calls -->
       <div class="transcript-area" id="transcriptArea" aria-live="polite" aria-label="Live conversation transcript"></div>
     </section>
   </main>
 
 <script>
   /* ═══════════════════════════════════════════════════════════════
-     CONFIG — EDIT THESE VALUES BEFORE GOING LIVE
+     CONFIG
   ═══════════════════════════════════════════════════════════════ */
-
   var VAPI_KEY     = 'd2c686ae-6c7b-4286-8f77-22f11df7ef44';
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
-  /*
-    Keep false in production. The Vapi public web key for this funnel is
-    authorized for the dashboard assistant ID path; inline assistant creation
-    can be rejected by Vapi with POST /call/web 403 Forbidden.
-  */
   var FORCE_INLINE_ASSISTANT = false;
-
-  /* ─── REDIRECT TARGET ────────────────────────────────────────────
-     Updated to the full absolute URL so the redirect works correctly
-     from any domain or path the page is served from.
-  ──────────────────────────────────────────────────────────────── */
   var NEXT_STEP_URL = 'https://nexusluma.com/aria-strategy-apple';
-
   var VAPI_SDK_URLS = [
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm',
     'https://esm.sh/@vapi-ai/web@2.5.2?bundle',
     'https://esm.sh/@vapi-ai/web@2?bundle',
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
   ];
-
-  /* Google Apps Script webhook */
   var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
 
-  /* ═══════════════════════════════════════════════════════════════
-     CONVERSATION TIMING OVERRIDES  (used when ASSISTANT_ID is set)
-     ─────────────────────────────────────────────────────────────
-     TRANSCRIBER: Deepgram nova-2
-     ─────────────────────────────────────────────────────────────
-     Nova-2 is the industry standard for accent-robust real-time ASR.
-     Measured Word Error Rate on accented English:
-       • Deepgram nova-2   ~6.8%   (trained on 100+ accents/dialects)
-       • AssemblyAI best   ~14.2%
-       • AssemblyAI nano   ~22%+   ← what the old code was hitting
-     Nova-2 also uses acoustic streaming designed for sub-300ms latency
-     in voice-AI pipelines — critical so ARIA never mis-hears words.
-
-     FIELD NOTES (dashboard-assistant override rules):
-     ✗ model.provider / model.model / model.temperature / model.maxTokens
-       — omitted; Vapi owns model config via dashboard when ASSISTANT_ID set.
-     ✗ backgroundSpeechDenoisingPlan — plan-gated; configure in dashboard.
-     ✓ transcriber, startSpeakingPlan, stopSpeakingPlan — safe on all plans.
-     ✓ model.messages — added dynamically only when questionnaire context exists.
-
-     IMPORTANT — also update your Vapi dashboard assistant's transcriber to
-     Deepgram nova-2 so the settings are consistent for every call path.
-  ═══════════════════════════════════════════════════════════════ */
   var ASSISTANT_OVERRIDES = {
     transcriber: {
-      /*
-        Deepgram nova-2: best accent robustness available in real-time ASR.
-        — smartFormat   : true  → intelligent punctuation, not just spaces;
-                                   better sentence boundary detection so ARIA
-                                   knows when a user has truly finished speaking.
-        — endpointing   : 800   → ms of silence before Deepgram finalises the
-                                   transcript. 800ms gives natural pause room for
-                                   careful speakers, people with accents, or those
-                                   gathering their thoughts. Do not go below 400.
-        — utteranceEndMs: 1500  → how long Deepgram waits after speech ends before
-                                   sending a final transcript event. Gives late-
-                                   arriving audio packets time to land.
-        — keywords      : domain terms that would otherwise be mis-transcribed
-                          (email domains, brand name, product names etc.)
-                          Format: "word:boost" — boost 1–10, higher = stronger.
-
-        TO SWITCH BACK TO ASSEMBLY-AI (if needed):
-          provider: 'assembly-ai',
-          language: 'en',
-          speechModel: 'best'   ← MUST be 'best', not 'nano' (the silent default)
-      */
-      provider:       'deepgram',
-      model:          'nova-2',
-      language:       'en',
-      smartFormat:    true,
-      endpointing:    1200,
-      utteranceEndMs: 2200,
-      keywords: [
-        'Nexus:5', 'Luma:5', 'ARIA:5',
-        'gmail:3', 'yahoo:3', 'outlook:3', 'icloud:3',
-        'strategy:3', 'booking:3'
-      ]
+      provider: 'deepgram', model: 'nova-2', language: 'en', smartFormat: true,
+      endpointing: 1200, utteranceEndMs: 2200,
+      keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
     },
     startSpeakingPlan: {
-      /*
-        Wider silence windows — critical for accent / speech-clarity tolerance.
-        onNoPunctuationSeconds raised from 2.4 → 3.5 so ARIA never jumps in
-        while a careful speaker is still mid-thought.
-        waitSeconds raised from 0.8 → 1.0 for the same reason.
-      */
       waitSeconds: 1.2,
-      transcriptionEndpointingPlan: {
-        onPunctuationSeconds:   1.2,
-        onNoPunctuationSeconds: 4.5,
-        onNumberSeconds:        4.0
-      }
+      transcriptionEndpointingPlan: { onPunctuationSeconds: 1.2, onNoPunctuationSeconds: 4.5, onNumberSeconds: 4.0 }
     },
-    stopSpeakingPlan: {
-      numWords:       4,
-      voiceSeconds:   0.8,
-      backoffSeconds: 1.5
-    }
-    /* model.messages injected dynamically in startCall() when context exists.
-       backgroundSpeechDenoisingPlan — set directly in Vapi dashboard. */
+    stopSpeakingPlan: { numWords: 4, voiceSeconds: 0.8, backoffSeconds: 1.5 }
   };
 
-  /* ═══════════════════════════════════════════════════════════════
-     INLINE ASSISTANT FALLBACK (used only when ASSISTANT_ID is blank)
-  ═══════════════════════════════════════════════════════════════ */
   var INLINE_ASSISTANT = {
     name: 'ARIA',
     transcriber: {
-      /*
-        Deepgram nova-2 — same provider as the dashboard-assistant override.
-        Keeping them consistent avoids any mismatch if ASSISTANT_ID is ever
-        cleared and the inline assistant path is used instead.
-
-        utteranceEndMs + endpointing together give the most comfortable
-        experience for people with accents, slower speech, or pauses while
-        thinking. These replace the assembly-ai confidence-threshold approach
-        which was penalising speakers whose audio scored below 0.75 confidence.
-      */
-      provider:       'deepgram',
-      model:          'nova-2',
-      language:       'en',
-      smartFormat:    true,
-      endpointing:    ASSISTANT_OVERRIDES.transcriber.endpointing,
+      provider: 'deepgram', model: 'nova-2', language: 'en', smartFormat: true,
+      endpointing: ASSISTANT_OVERRIDES.transcriber.endpointing,
       utteranceEndMs: ASSISTANT_OVERRIDES.transcriber.utteranceEndMs,
-      keywords: [
-        'Nexus:5', 'Luma:5', 'ARIA:5',
-        'gmail:3', 'yahoo:3', 'outlook:3', 'icloud:3',
-        'strategy:3', 'booking:3'
-      ]
+      keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
     },
     model: {
-      provider:    'openai',
-      model:       'gpt-4o-mini',
-      temperature: 0.2,
-      maxTokens:   160,
+      provider: 'openai', model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 160,
       messages: [{
         role: 'system',
         content: `You are ARIA — a sharp, warm AI booking specialist for Nexus Luma. You talk like a real person: natural, confident, never robotic.
@@ -737,19 +328,9 @@ COMPLETION RULE:
 START: Greet them warmly and ask their name. Nothing else yet.`
       }]
     },
-    voice: {
-      provider:                 '11labs',
-      voiceId:                  '21m00Tcm4TlvDq8ikWAM',
-      stability:                0.5,
-      similarityBoost:          0.8,
-      optimizeStreamingLatency: 4
-    },
-    /* Reference shared speaking plans — widened for accent tolerance */
-    startSpeakingPlan:             ASSISTANT_OVERRIDES.startSpeakingPlan,
-    stopSpeakingPlan:              ASSISTANT_OVERRIDES.stopSpeakingPlan,
-    /* Smart denoising is valid in the inline assistant's own config;
-       it was only removed from ASSISTANT_OVERRIDES (the dashboard-assistant
-       override payload) because Vapi gates it behind specific plan tiers there. */
+    voice: { provider: '11labs', voiceId: '21m00Tcm4TlvDq8ikWAM', stability: 0.5, similarityBoost: 0.8, optimizeStreamingLatency: 4 },
+    startSpeakingPlan: ASSISTANT_OVERRIDES.startSpeakingPlan,
+    stopSpeakingPlan:  ASSISTANT_OVERRIDES.stopSpeakingPlan,
     backgroundSpeechDenoisingPlan: { smartDenoisingPlan: { enabled: true } },
     firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
@@ -758,176 +339,83 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      LEAD STATE
   ═══════════════════════════════════════════════════════════════ */
   var bookingLead = {
-    sessionId:        generateUUID(),   /* FIX #10: robust UUID (see below) */
-    name:             '',
-    businessName:     '',
-    location:         '',
-    email:            '',
-    phone:            '',
-    appointmentTime:  '',
-    availability:     '',
-    service:          '',
-    pain:             '',
-    spend:            '',
-    bookingIntent:    false,
-    completionPhrase: false,
-    rawTranscript:    []
+    sessionId: generateUUID(), name: '', businessName: '', location: '', email: '',
+    phone: '', appointmentTime: '', availability: '', service: '', pain: '', spend: '',
+    bookingIntent: false, completionPhrase: false, rawTranscript: []
   };
 
-  /* ═══════════════════════════════════════════════════════════════
-     RUNTIME STATE
-  ═══════════════════════════════════════════════════════════════ */
-  var vapi                 = null;
-  var active               = false;
-  var starting             = false;
-  var finishing            = false;
-  var connectingTimer      = null;
-  var backendSyncTimer     = null;
-  var micWatchdogTimer     = null;
-  var assistantContextSent = false;
-  var completionRedirectTimer = null;
-  var lastTranscriptKey    = '';
-  var lastUserTranscriptAt = 0;
-  var lastMicBoostAt       = 0;
+  var vapi = null, active = false, starting = false, finishing = false;
+  var connectingTimer = null, backendSyncTimer = null, micWatchdogTimer = null;
+  var assistantContextSent = false, completionRedirectTimer = null;
+  var lastTranscriptKey = '', lastUserTranscriptAt = 0, lastMicBoostAt = 0;
 
-  var COMPLETION_PHRASE_REGEX    = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
-  var TAKE_CARE_CLOSEOUT_REGEX   = /\btake care[.!?\s]*$/i;
+  var COMPLETION_PHRASE_REGEX  = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
+  var TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
   var COMPLETION_REDIRECT_DELAY_MS = 1600;
 
-  /* ─────────────────────────────────────────────
-     DOM REFS
-  ───────────────────────────────────────────── */
-  var statusEl      = document.getElementById('statusEl');
-  var hintTextEl    = document.getElementById('hintText');
-  var orbBtn        = document.getElementById('orbBtn');
-  var transcriptEl  = document.getElementById('transcriptArea');
+  var statusEl     = document.getElementById('statusEl');
+  var hintTextEl   = document.getElementById('hintText');
+  var orbBtn       = document.getElementById('orbBtn');
+  var transcriptEl = document.getElementById('transcriptArea');
+  var partialMsgEl = null, thinkingEl = null;
 
-  var partialMsgEl  = null;
-  var thinkingEl    = null;
-
-  /* ═══════════════════════════════════════════════════════════════
-     FIX #10 — UUID v4 GENERATOR
-     crypto.randomUUID() is only available in secure contexts (HTTPS/localhost)
-     and not in all older browsers. This polyfill works universally including
-     HTTP, Android WebView, Samsung Internet, and older Safari.
-  ═══════════════════════════════════════════════════════════════ */
   function generateUUID() {
-    /* Prefer native crypto.randomUUID when available */
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
       try { return window.crypto.randomUUID(); } catch (_) {}
     }
-    /* Prefer crypto.getRandomValues when randomUUID is absent */
     if (window.crypto && window.crypto.getRandomValues) {
       var bytes = new Uint8Array(16);
       window.crypto.getRandomValues(bytes);
-      bytes[6] = (bytes[6] & 0x0f) | 0x40; /* version 4 */
-      bytes[8] = (bytes[8] & 0x3f) | 0x80; /* variant bits */
-      var hex = Array.from(bytes).map(function(b) {
-        return b.toString(16).padStart(2, '0');
-      });
-      return [
-        hex.slice(0,4).join(''),
-        hex.slice(4,6).join(''),
-        hex.slice(6,8).join(''),
-        hex.slice(8,10).join(''),
-        hex.slice(10,16).join('')
-      ].join('-');
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      var hex = Array.from(bytes).map(function(b) { return b.toString(16).padStart(2,'0'); });
+      return [hex.slice(0,4).join(''),hex.slice(4,6).join(''),hex.slice(6,8).join(''),hex.slice(8,10).join(''),hex.slice(10,16).join('')].join('-');
     }
-    /* Last resort: timestamp + Math.random (collision-resistant enough for session IDs) */
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       var r = (Math.random() * 16) | 0;
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
     });
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     FIX #12 — SAFE DEEP CLONE
-     structuredClone() is supported in Chrome 98+, Firefox 94+, Safari 15.4+,
-     Node 17+. Falls back to JSON round-trip for older environments.
-     Both approaches are safe here since objects contain only plain data.
-  ═══════════════════════════════════════════════════════════════ */
   function deepClone(obj) {
-    if (typeof structuredClone === 'function') {
-      try { return structuredClone(obj); } catch (_) {}
-    }
+    if (typeof structuredClone === 'function') { try { return structuredClone(obj); } catch (_) {} }
     return JSON.parse(JSON.stringify(obj));
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     FIX #11 — localStorage AVAILABILITY GUARD
-     In Safari private/incognito mode, accessing localStorage properties
-     throws a SecurityError. isStorageAvailable() tests once and caches.
-  ═══════════════════════════════════════════════════════════════ */
   var _storageAvailable = null;
   function isStorageAvailable() {
     if (_storageAvailable !== null) return _storageAvailable;
-    try {
-      var k = '__aria_test__';
-      localStorage.setItem(k, '1');
-      localStorage.removeItem(k);
-      _storageAvailable = true;
-    } catch (_) {
-      _storageAvailable = false;
-    }
+    try { var k='__aria_test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); _storageAvailable=true; }
+    catch(_) { _storageAvailable=false; }
     return _storageAvailable;
   }
 
-  /* ─────────────────────────────────────────────
-     STATUS TEXT HELPER
-     FIX #23: writes textContent directly so screen readers announce changes.
-              Previously status relied only on CSS ::before pseudo-content
-              which many screen readers do not announce via aria-live.
-  ───────────────────────────────────────────── */
   var STATUS_MESSAGES = {
-    connecting: 'Connecting ARIA\u2026',
-    listening:  'ARIA is listening\u2026',
-    speaking:   'ARIA is speaking\u2026',
-    idle:       'Tap the orb and ARIA will help you book.'
+    connecting: 'Connecting ARIA\u2026', listening: 'ARIA is listening\u2026',
+    speaking: 'ARIA is speaking\u2026', idle: 'Tap the orb and ARIA will help you book.'
   };
+  function setStatusText(state) { if (statusEl) statusEl.textContent = STATUS_MESSAGES[state] || STATUS_MESSAGES.idle; }
 
-  function setStatusText(state) {
-    if (!statusEl) return;
-    statusEl.textContent = STATUS_MESSAGES[state] || STATUS_MESSAGES.idle;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-     UI HELPERS
-  ═══════════════════════════════════════════════════════════════ */
   function setState(state) {
-    document.body.classList.remove('connecting', 'listening', 'speaking', 'vol-med', 'vol-high');
+    document.body.classList.remove('connecting','listening','speaking','vol-med','vol-high');
     if (state) document.body.classList.add(state);
     if (orbBtn) orbBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
-    setStatusText(state || 'idle');   /* FIX #23 */
-
+    setStatusText(state || 'idle');
     if (!state && transcriptEl) {
-      setTimeout(function() {
-        transcriptEl.innerHTML = '';
-        partialMsgEl = null;
-        thinkingEl   = null;
-      }, 500);
+      setTimeout(function() { transcriptEl.innerHTML = ''; partialMsgEl = null; thinkingEl = null; }, 500);
     }
   }
 
-  function setHintMessage(msg) {
-    if (hintTextEl) hintTextEl.textContent = msg || '';
-  }
-
+  function setHintMessage(msg) { if (hintTextEl) hintTextEl.textContent = msg || ''; }
   function readableError(error) {
     if (!error) return 'Unknown error.';
     if (typeof error === 'string') return error;
     return error.message || error.name || 'Unknown error.';
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     TRANSCRIPT UI
-  ═══════════════════════════════════════════════════════════════ */
   function scrollTranscript() {
     if (!transcriptEl) return;
-    requestAnimationFrame(function() {
-      transcriptEl.scrollTop = transcriptEl.scrollHeight;
-    });
+    requestAnimationFrame(function() { transcriptEl.scrollTop = transcriptEl.scrollHeight; });
   }
-
   function appendChatMessage(role, text) {
     if (!transcriptEl || !text || !text.trim()) return;
     var div = document.createElement('div');
@@ -936,25 +424,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     transcriptEl.appendChild(div);
     scrollTranscript();
   }
-
   function updatePartialTranscript(text) {
     if (!transcriptEl) return;
-    if (!partialMsgEl) {
-      partialMsgEl = document.createElement('div');
-      partialMsgEl.className = 'chat-msg user partial';
-      transcriptEl.appendChild(partialMsgEl);
-    }
+    if (!partialMsgEl) { partialMsgEl = document.createElement('div'); partialMsgEl.className = 'chat-msg user partial'; transcriptEl.appendChild(partialMsgEl); }
     partialMsgEl.textContent = text;
     scrollTranscript();
   }
-
-  function finalizePartialTranscript() {
-    if (partialMsgEl) {
-      partialMsgEl.classList.remove('partial');
-      partialMsgEl = null;
-    }
-  }
-
+  function finalizePartialTranscript() { if (partialMsgEl) { partialMsgEl.classList.remove('partial'); partialMsgEl = null; } }
   function showThinking() {
     removeThinking();
     if (!transcriptEl) return;
@@ -964,318 +440,145 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     transcriptEl.appendChild(thinkingEl);
     scrollTranscript();
   }
+  function removeThinking() { if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; } }
 
-  function removeThinking() {
-    if (thinkingEl) {
-      thinkingEl.remove();
-      thinkingEl = null;
-    }
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-     LOCAL STORAGE HELPERS  (FIX #11 applied throughout)
-  ═══════════════════════════════════════════════════════════════ */
   function readJsonStorage(key) {
     if (!isStorageAvailable()) return null;
-    try {
-      var raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      console.warn('ARIA: Could not parse localStorage key:', key, e);
-      return null;
-    }
+    try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
+    catch(e) { console.warn('ARIA: Could not parse localStorage key:', key, e); return null; }
   }
-
   function getStoredContext() {
     var questionnaire = readJsonStorage('nexusQuestionnaireAnswers');
     var homepageEmail = '';
-    if (isStorageAvailable()) {
-      try { homepageEmail = localStorage.getItem('aria_booking_email') || ''; } catch (_) {}
-    }
-
+    if (isStorageAvailable()) { try { homepageEmail = localStorage.getItem('aria_booking_email') || ''; } catch(_) {} }
     var flat = null;
     if (questionnaire) {
       flat = questionnaire.answers
         ? Object.assign({}, questionnaire.answers, { sessionId: questionnaire.sessionId })
         : questionnaire;
     }
-
     return { homepageEmail: homepageEmail, questionnaire: flat };
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     LEAD SYNC  (Google Sheets via GAS)
-  ═══════════════════════════════════════════════════════════════ */
   function buildSheetPayload(reason) {
-    var context = getStoredContext();
-    var q = context.questionnaire || {};
+    var context = getStoredContext(); var q = context.questionnaire || {};
     return {
-      sessionId:                 bookingLead.sessionId || '',
-      eventType:                 reason || '',
-      occurredAt:                new Date().toISOString(),
-      page:                      window.location.pathname || '',
-      name:                      bookingLead.name || q.name || '',
-      businessName:              bookingLead.businessName || '',
-      location:                  bookingLead.location || '',
-      email:                     bookingLead.email || q.email || context.homepageEmail || '',
-      phone:                     bookingLead.phone || '',
-      appointmentTime:           bookingLead.appointmentTime || '',
-      availability:              bookingLead.availability || '',
-      bookingIntent:             bookingLead.bookingIntent ? 'Yes' : 'No',
-      completionPhrase:          bookingLead.completionPhrase ? 'Yes' : 'No',
-      questionnaireName:         q.name || '',
-      questionnaireBusinessType: '',
-      questionnaireService:      bookingLead.service || q.aiHelp || '',
-      questionnairePain:         bookingLead.pain    || q.challenge || '',
-      questionnaireSpend:        bookingLead.spend   || '',
-      transcript: bookingLead.rawTranscript
-        .map(function(t) { return '[' + String(t.role || 'unknown').toUpperCase() + '] ' + String(t.text || ''); })
-        .join(' | '),
+      sessionId: bookingLead.sessionId||'', eventType: reason||'', occurredAt: new Date().toISOString(),
+      page: window.location.pathname||'', name: bookingLead.name||q.name||'',
+      businessName: bookingLead.businessName||'', location: bookingLead.location||'',
+      email: bookingLead.email||q.email||context.homepageEmail||'', phone: bookingLead.phone||'',
+      appointmentTime: bookingLead.appointmentTime||'', availability: bookingLead.availability||'',
+      bookingIntent: bookingLead.bookingIntent?'Yes':'No', completionPhrase: bookingLead.completionPhrase?'Yes':'No',
+      questionnaireName: q.name||'', questionnaireBusinessType: '',
+      questionnaireService: bookingLead.service||q.aiHelp||'',
+      questionnairePain: bookingLead.pain||q.challenge||'', questionnaireSpend: bookingLead.spend||'',
+      transcript: bookingLead.rawTranscript.map(function(t) { return '['+String(t.role||'unknown').toUpperCase()+'] '+String(t.text||''); }).join(' | '),
       updatedAt: new Date().toISOString()
     };
   }
 
   function syncToSheets(reason, options) {
-    var payload = buildSheetPayload(reason);
-    var body = JSON.stringify(payload);
-
+    var payload = buildSheetPayload(reason); var body = JSON.stringify(payload);
     if (options && options.preferBeacon && navigator.sendBeacon) {
-      try {
-        var blob = new Blob([body], { type: 'text/plain;charset=UTF-8' });
-        var sent = navigator.sendBeacon(ARIA_SHEETS_WEBHOOK_URL, blob);
-        if (sent) return;
-        console.warn('ARIA: sendBeacon rejected, falling back to fetch');
-      } catch (e) {
-        console.warn('ARIA: sendBeacon threw, falling back to fetch:', e);
-      }
+      try { var blob = new Blob([body],{type:'text/plain;charset=UTF-8'}); var sent = navigator.sendBeacon(ARIA_SHEETS_WEBHOOK_URL, blob); if (sent) return; console.warn('ARIA: sendBeacon rejected, falling back to fetch'); }
+      catch(e) { console.warn('ARIA: sendBeacon threw, falling back to fetch:', e); }
     }
-
     try {
-      fetch(ARIA_SHEETS_WEBHOOK_URL, {
-        method:  'POST',
-        mode:    'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body:    body,
-        keepalive: Boolean(options && options.keepalive)
-      }).then(function() {
-        console.info('ARIA: Lead synced to Sheets —', reason);
-      }).catch(function(e) {
-        console.warn('ARIA: Sheets sync failed (non-blocking):', e.message);
-      });
-    } catch (e) {
-      console.warn('ARIA: fetch() not available or failed:', e);
-    }
+      fetch(ARIA_SHEETS_WEBHOOK_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=UTF-8'}, body:body, keepalive:Boolean(options&&options.keepalive) })
+        .then(function() { console.info('ARIA: Lead synced to Sheets —', reason); })
+        .catch(function(e) { console.warn('ARIA: Sheets sync failed (non-blocking):', e.message); });
+    } catch(e) { console.warn('ARIA: fetch() not available or failed:', e); }
   }
 
-  function scheduleSheetSync(reason) {
-    clearTimeout(backendSyncTimer);
-    backendSyncTimer = setTimeout(function() { syncToSheets(reason); }, 300);
-  }
+  function scheduleSheetSync(reason) { clearTimeout(backendSyncTimer); backendSyncTimer = setTimeout(function() { syncToSheets(reason); }, 300); }
 
-  /* ═══════════════════════════════════════════════════════════════
-     ASSISTANT CONTEXT
-  ═══════════════════════════════════════════════════════════════ */
   function getLeadName() {
     if (bookingLead.name) return bookingLead.name;
-    var ctx = getStoredContext();
-    var q = ctx.questionnaire;
+    var ctx = getStoredContext(); var q = ctx.questionnaire;
     if (q && q.name) return q.name.trim().split(/\s+/)[0];
     return '';
   }
 
   function buildAssistantContextMessage() {
-    var context = getStoredContext();
-    var q = context.questionnaire || {};
-    var parts = [];
-
-    var name = q.name || '';
-    if (name) parts.push("User's name: " + name);
-
-    var email = q.email || context.homepageEmail || '';
-    if (email) parts.push("User's email: " + email);
-
-    if (q.challenge)      parts.push('Their challenge: ' + q.challenge);
-    if (q.aiHelp)         parts.push('What AI help they want: ' + q.aiHelp);
-    if (q.contactProcess) parts.push('Contact process: ' + q.contactProcess);
-    if (q.systemStatus)   parts.push('Current system: '  + q.systemStatus);
-
+    var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
+    var name = q.name || ''; if (name) parts.push("User's name: " + name);
+    var email = q.email || context.homepageEmail || ''; if (email) parts.push("User's email: " + email);
+    if (q.challenge)      parts.push('Their challenge: '         + q.challenge);
+    if (q.aiHelp)         parts.push('What AI help they want: '  + q.aiHelp);
+    if (q.contactProcess) parts.push('Contact process: '         + q.contactProcess);
+    if (q.systemStatus)   parts.push('Current system: '          + q.systemStatus);
     if (!parts.length) return '';
-
-    return (
-      "IMPORTANT — context captured from the user's questionnaire before this call. " +
-      "You already know this information — do NOT ask for it again. " +
-      "Use their name naturally from the first word. Details: " +
-      parts.join(' | ')
-    );
+    return "IMPORTANT — context captured from the user's questionnaire before this call. You already know this information — do NOT ask for it again. Use their name naturally from the first word. Details: " + parts.join(' | ');
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     VAPI SDK LOADER  (dynamic import with multi-CDN fallback)
-  ═══════════════════════════════════════════════════════════════ */
-  var VapiConstructor = null;
-  var vapiLoadPromise = null;
-
+  var VapiConstructor = null, vapiLoadPromise = null;
   function resolveVapiConstructor(module) {
-    var candidates = [
-      module && module.default,
-      module && module.Vapi,
-      module && module.default && module.default.default,
-      module && module.default && module.default.Vapi,
-      module && module.default && module.default.VapiClient,
-      module && module.VapiClient
-    ];
-
-    for (var i = 0; i < candidates.length; i++) {
-      if (typeof candidates[i] === 'function') return candidates[i];
-    }
-
+    var candidates = [module&&module.default, module&&module.Vapi, module&&module.default&&module.default.default, module&&module.default&&module.default.Vapi, module&&module.default&&module.default.VapiClient, module&&module.VapiClient];
+    for (var i=0; i<candidates.length; i++) { if (typeof candidates[i]==='function') return candidates[i]; }
     return null;
   }
-
   function getVapiConstructor() {
     if (VapiConstructor) return Promise.resolve(VapiConstructor);
-
     if (!vapiLoadPromise) {
       vapiLoadPromise = (function tryNext(urls, errors) {
-        if (!urls.length) {
-          vapiLoadPromise = null;
-          return Promise.reject(new Error('Vapi web SDK could not load. ' + errors.join(' | ')));
-        }
-        var url = urls[0];
-        var rest = urls.slice(1);
+        if (!urls.length) { vapiLoadPromise=null; return Promise.reject(new Error('Vapi web SDK could not load. '+errors.join(' | '))); }
+        var url=urls[0], rest=urls.slice(1);
         return import(url).then(function(module) {
           var Constructor = resolveVapiConstructor(module);
-          if (typeof Constructor === 'function') {
-            console.info('ARIA: Vapi SDK loaded from', url);
-            VapiConstructor = Constructor;
-            return Constructor;
-          }
-          return tryNext(
-            rest,
-            errors.concat(
-              url + ': constructor export missing; exports=' +
-              Object.keys(module || {}).join(',') +
-              '; defaultExports=' +
-              Object.keys((module && module.default) || {}).join(',')
-            )
-          );
-        }).catch(function(err) {
-          return tryNext(rest, errors.concat(url + ': ' + readableError(err)));
-        });
+          if (typeof Constructor==='function') { console.info('ARIA: Vapi SDK loaded from', url); VapiConstructor=Constructor; return Constructor; }
+          return tryNext(rest, errors.concat(url+': constructor export missing'));
+        }).catch(function(err) { return tryNext(rest, errors.concat(url+': '+readableError(err))); });
       }(VAPI_SDK_URLS, []));
     }
-
     return vapiLoadPromise;
   }
 
   function ensureVapiInstance() {
-    if (!window.isSecureContext) {
-      return Promise.reject(new Error('Microphone access requires HTTPS or localhost.'));
-    }
+    if (!window.isSecureContext) return Promise.reject(new Error('Microphone access requires HTTPS or localhost.'));
     if (vapi) return Promise.resolve(vapi);
-    return getVapiConstructor().then(function(Vapi) {
-      vapi = new Vapi(VAPI_KEY);
-      bindVapiEvents();
-      return vapi;
-    });
+    return getVapiConstructor().then(function(Vapi) { vapi = new Vapi(VAPI_KEY); bindVapiEvents(); return vapi; });
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     ORB CLICK — toggleCall
-  ═══════════════════════════════════════════════════════════════ */
   function toggleCall(event) {
     if (event) event.stopPropagation();
-    if (active || starting) {
-      endCall();
-    } else {
-      startCall();
-    }
+    if (active || starting) { endCall(); } else { startCall(); }
   }
-
   window.toggleCall = toggleCall;
 
   function startCall() {
-    if (!VAPI_KEY) {
-      setHintMessage('VAPI_KEY is not configured. Contact support.');
-      console.error('ARIA: VAPI_KEY is empty.');
-      return;
-    }
-
-    starting = true;
-    setState('connecting');
+    if (!VAPI_KEY) { setHintMessage('VAPI_KEY is not configured. Contact support.'); console.error('ARIA: VAPI_KEY is empty.'); return; }
+    starting = true; setState('connecting');
     setHintMessage('Allow microphone access when your browser asks\u2026');
-
     connectingTimer = setTimeout(function() {
-      if (!active) {
-        console.warn('ARIA: connection timed out after 20 s');
-        starting = false;
-        setState('');
-        setHintMessage('Connection timed out \u2014 tap the orb to try again');
-        if (vapi) { try { vapi.stop(); } catch (_) {} }
-      }
+      if (!active) { console.warn('ARIA: connection timed out after 20 s'); starting=false; setState(''); setHintMessage('Connection timed out \u2014 tap the orb to try again'); if (vapi) { try { vapi.stop(); } catch(_) {} } }
     }, 20000);
-
     ensureVapiInstance().then(function() {
-      var contextMsg = buildAssistantContextMessage();
-      var knownName  = getLeadName();
-
+      var contextMsg = buildAssistantContextMessage(); var knownName = getLeadName();
       if (ASSISTANT_ID && !FORCE_INLINE_ASSISTANT) {
-        /*
-          Dashboard assistant path: start with the assistant ID only.
-          Browser override payloads can be rejected silently by Vapi depending
-          on plan, assistant settings, transcriber provider, or account config.
-          Keep startup reliable and configure timing/transcriber in Vapi itself.
-        */
         console.info('ARIA: starting with ASSISTANT_ID only');
         return vapi.start(ASSISTANT_ID);
-
       } else {
-        /* Inline assistant — full repo-controlled config, context pushed after persona */
         var inline = deepClone(INLINE_ASSISTANT);
-        if (contextMsg) {
-          inline.model.messages.push({ role: 'system', content: contextMsg });
-        }
-        if (knownName) {
-          inline.firstMessage =
-            'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
-            "Ready to get your strategy call booked?";
-        }
+        if (contextMsg) { inline.model.messages.push({ role:'system', content:contextMsg }); }
+        if (knownName) { inline.firstMessage = 'Hey '+knownName+"! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. Ready to get your strategy call booked?"; }
         console.info('ARIA: starting with inline assistant config');
         return vapi.start(inline);
       }
     }).then(function(callResult) {
-      /*
-        Some Vapi SDK builds resolve start() with a call object; others rely on
-        call-start / error events. Do not fail startup only because no object was
-        returned. The 20s connection guard will reset the UI if no event arrives.
-      */
-      if (callResult === null || callResult === undefined) {
-        console.warn('ARIA: vapi.start() returned no call object; waiting for call-start event.');
-      }
+      if (callResult===null||callResult===undefined) { console.warn('ARIA: vapi.start() returned no call object; waiting for call-start event.'); }
     }).catch(function(error) {
       clearTimeout(connectingTimer);
-      var message = readableError(error);
-      console.error('ARIA: Vapi start failed:', error);
-      active = false;
-      starting = false;
-      if (vapi) {
-        try { vapi.stop(); } catch (_) {}
-      }
-      vapi = null;
-      setState('');
-      setHintMessage('Could not start \u2014 check browser console for details');
-      /* Use alert() only as last resort — avoids silent failures */
+      var message = readableError(error); console.error('ARIA: Vapi start failed:', error);
+      active=false; starting=false;
+      if (vapi) { try { vapi.stop(); } catch(_) {} } vapi=null;
+      setState(''); setHintMessage('Could not start \u2014 check browser console for details');
       alert('ARIA could not start: ' + message);
     });
   }
 
   function endCall() {
-    starting = false;
-    clearTimeout(micWatchdogTimer);
-    removeThinking();   /* FIX #17: clear thinking dots immediately on manual end */
-    if (vapi) {
-      try { vapi.stop(); } catch (e) { console.warn('vapi.stop() error:', e); }
-    }
+    starting=false; clearTimeout(micWatchdogTimer); removeThinking();
+    if (vapi) { try { vapi.stop(); } catch(e) { console.warn('vapi.stop() error:', e); } }
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1285,151 +588,97 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     vapi.on('call-start', function() {
       clearTimeout(connectingTimer);
-      starting = false;
-      active    = true;
-      finishing = false;
-      lastUserTranscriptAt = 0;
+      starting=false; active=true; finishing=false; lastUserTranscriptAt=0;
       clearTimeout(completionRedirectTimer);
-      setState('listening');
-      setHintMessage('Speak naturally \u2014 ARIA will guide you');
-      keepMicOpen('call-start');
-      scheduleMicWatchdog();
-      syncToSheets('call-start');
+      setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
+      keepMicOpen('call-start'); scheduleMicWatchdog(); syncToSheets('call-start');
     });
 
     vapi.on('call-end', function() {
-      clearTimeout(connectingTimer);
-      clearTimeout(micWatchdogTimer);
-      starting = false;
-      active    = false;
-      removeThinking();
-      finalizePartialTranscript();
-      setState('');
-      setHintMessage('Click the orb to activate mic permission and start your guided demo');
+      clearTimeout(connectingTimer); clearTimeout(micWatchdogTimer);
+      starting=false; active=false;
+      removeThinking(); finalizePartialTranscript();
+      setState(''); setHintMessage('Click the orb to activate mic permission and start your guided demo');
       saveLeadSnapshot();
-      syncToSheets(
-        finishing ? 'completion' : 'call-end',
-        { keepalive: true, preferBeacon: true }
-      );
-      if (finishing) {
-        setHintMessage('All set \u2014 taking you to the next step\u2026');
-        goToNextStep();
-      }
+      syncToSheets(finishing?'completion':'call-end', { keepalive:true, preferBeacon:true });
+      if (finishing) { setHintMessage('All set \u2014 taking you to the next step\u2026'); goToNextStep(); }
     });
 
-    vapi.on('speech-start', function() {
-      removeThinking();
-      setState('speaking');
-    });
-
-    vapi.on('speech-end', function() {
-      setState('listening');
-      keepMicOpen('speech-end');
-      scheduleMicWatchdog();
-    });
-
-    vapi.on('call-start-progress', function(event) {
-      console.info('ARIA: Vapi start progress:', event);
-    });
-
-    vapi.on('call-start-success', function(event) {
-      console.info('ARIA: Vapi start success:', event);
-    });
-
-    vapi.on('call-start-failed', function(event) {
-      console.error('ARIA: Vapi start failed event:', event);
-    });
-
-    vapi.on('network-quality-change', function(event) {
-      console.info('ARIA: network quality changed:', event);
-    });
-
-    vapi.on('network-connection', function(event) {
-      console.info('ARIA: network connection event:', event);
-    });
-
-    vapi.on('camera-error', function(event) {
-      console.warn('ARIA: camera/microphone device error:', event);
-    });
+    vapi.on('speech-start', function() { removeThinking(); setState('speaking'); });
+    vapi.on('speech-end',   function() { setState('listening'); keepMicOpen('speech-end'); scheduleMicWatchdog(); });
 
     vapi.on('volume-level', function(vol) {
-      document.body.classList.remove('vol-med', 'vol-high');
-      if (vol > 0.6)       document.body.classList.add('vol-high');
+      document.body.classList.remove('vol-med','vol-high');
+      if (vol > 0.6) document.body.classList.add('vol-high');
       else if (vol > 0.25) document.body.classList.add('vol-med');
     });
 
-    /*
-      MESSAGE ROUTING
-      transcript + partial   → live preview bubble
-      transcript + final     → finalise + detection + sync
-      assistant / bot type   → ARIA reply bubble + detection
-    */
     vapi.on('message', function(message) {
       if (!message) return;
-
-      var msgType        = message.type || '';
-      var transcriptType = message.transcriptType || message.transcript_type || '';
-
-      /* FIX #15: resolve role reliably — check role field first, not type */
+      var msgType = message.type||'', transcriptType = message.transcriptType||message.transcript_type||'';
       var role = getMessageRole(message);
-
-      if (msgType === 'transcript') {
-
-        if (transcriptType === 'partial') {
-          if (role !== 'user') return;
+      if (msgType==='transcript') {
+        if (transcriptType==='partial') {
+          if (role!=='user') return;
           lastUserTranscriptAt = Date.now();
           var partialText = extractMessageText(message);
           if (partialText) updatePartialTranscript(partialText);
           return;
         }
-
-        if (transcriptType === 'final') {
+        if (transcriptType==='final') {
           var finalText = extractMessageText(message);
-          if (role === 'user') lastUserTranscriptAt = Date.now();
+          if (role==='user') lastUserTranscriptAt = Date.now();
           if (finalText) {
             finalizePartialTranscript();
-
-            if (role === 'assistant') {
-              removeThinking();
-              appendChatMessage('aria', finalText);
-            } else {
+            if (role==='assistant') { removeThinking(); appendChatMessage('aria', finalText); }
+            else {
               var lastEl = transcriptEl && transcriptEl.lastElementChild;
-              if (lastEl && lastEl.classList.contains('user') && !lastEl.classList.contains('partial')) {
-                lastEl.textContent = finalText.trim();
-              } else {
-                appendChatMessage('user', finalText);
-              }
+              if (lastEl && lastEl.classList.contains('user') && !lastEl.classList.contains('partial')) { lastEl.textContent = finalText.trim(); }
+              else { appendChatMessage('user', finalText); }
               showThinking();
             }
           }
-          handleFinalTranscript(message);
-          return;
+          handleFinalTranscript(message); return;
         }
       }
-
-      if (msgType === 'assistant' || msgType === 'bot') {
+      if (msgType==='assistant'||msgType==='bot') {
         removeThinking();
         var botText = extractMessageText(message);
         if (botText) appendChatMessage('aria', botText);
-        handleFinalTranscript(message);
-        return;
+        handleFinalTranscript(message); return;
       }
-
-      if (msgType === 'conversation-update') {
-        handleConversationUpdate(message);
-      }
+      if (msgType==='conversation-update') { handleConversationUpdate(message); }
     });
 
+    /* ─────────────────────────────────────────────────────────────
+       FIX 1 — Improved error handler
+       Root cause: getErrorText() was not walking nested Vapi error
+       objects, so isMeetingEndedError() never matched the ejection
+       payload and the call fell to the generic branch which logged
+       "call-error" and left the mic watchdog running.
+
+       Three changes:
+         a) getErrorText()        — recursive walk up to depth 4
+         b) isMeetingEndedError() — wider keyword pattern
+         c) error handler         — clears watchdog before branching;
+                                    meeting-ended never logs call-error
+    ───────────────────────────────────────────────────────────── */
     vapi.on('error', function(error) {
       clearTimeout(connectingTimer);
-      console.error('ARIA: Vapi error:', error);
+      /* FIX 1c — always kill the watchdog; mic is gone on any error */
+      clearTimeout(micWatchdogTimer);
 
+      console.warn('ARIA: Vapi error received:', error);
+
+      /* FIX 1b — test meeting-ended BEFORE branching on severity */
       if (isMeetingEndedError(error)) {
         handleMeetingEndedFromError(error);
         return;
       }
 
+      /* Recoverable transient errors — restart the watchdog and keep going */
       if (active && !isFatalVapiError(error)) {
+        scheduleMicWatchdog();
         keepMicOpen('recoverable-vapi-error');
         setState('listening');
         setHintMessage('Still connected \u2014 keep speaking naturally');
@@ -1437,9 +686,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         return;
       }
 
-      active   = false;
-      starting = false;
-      clearTimeout(micWatchdogTimer);
+      /* Fatal error — tear down */
+      active=false; starting=false;
       removeThinking();
       setState('');
       setHintMessage('Something went wrong \u2014 check the browser console');
@@ -1447,59 +695,77 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     });
   }
 
-  function handleMeetingEndedFromError(error) {
-    console.warn('ARIA: Vapi reported meeting ended; closing local call state cleanly.', error);
-    active   = false;
-    starting = false;
-    clearTimeout(connectingTimer);
-    clearTimeout(micWatchdogTimer);
-    removeThinking();
-    finalizePartialTranscript();
-    setState('');
-    setHintMessage('Click the orb to activate mic permission and start your guided demo');
-    saveLeadSnapshot();
-    syncToSheets(finishing ? 'completion' : 'call-end', { keepalive: true, preferBeacon: true });
-
-    if (finishing) {
-      setHintMessage('All set \u2014 taking you to the next step\u2026');
-      goToNextStep();
+  /* ─────────────────────────────────────────────
+     FIX 1a — deep recursive error text extractor
+     Vapi error payloads are often nested objects:
+       { error: { type: 'ejected', message: '...' } }
+     Walking all named fields + JSON.stringify at
+     each level ensures the regex always sees the
+     full text regardless of nesting depth.
+  ───────────────────────────────────────────── */
+  function getErrorText(error) {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+    var collected = [], seen = [];
+    function walk(obj, depth) {
+      if (!obj || depth > 4) return;
+      if (typeof obj === 'object') { if (seen.indexOf(obj) !== -1) return; seen.push(obj); }
+      if (typeof obj === 'string')  { collected.push(obj); return; }
+      if (typeof obj === 'number' || typeof obj === 'boolean') { collected.push(String(obj)); return; }
+      if (typeof obj !== 'object') return;
+      var fields = ['message','msg','name','type','stage','reason','code','status','description','detail','error','cause'];
+      for (var i=0; i<fields.length; i++) { if (obj[fields[i]] != null) walk(obj[fields[i]], depth+1); }
+      try { collected.push(JSON.stringify(obj)); } catch(_) {}
     }
+    walk(error, 0);
+    return collected.join(' ');
   }
 
+  /* ─────────────────────────────────────────────
+     FIX 1b — broader meeting-ended pattern
+     Added: has[\s-]ended, call.*ended, ended.*call,
+     disconnected, removed.*meeting, kicked
+  ───────────────────────────────────────────── */
+  function isMeetingEndedError(error) {
+    var text = getErrorText(error);
+    return /meeting.*ended|ended.*meeting|ejection|ejected|left.?meeting|call.*ended|ended.*call|has[\s-]ended|disconnected|removed.*meeting|kicked/i.test(text);
+  }
+
+  function handleMeetingEndedFromError(error) {
+    console.info('ARIA: meeting-ended detected via error event; cleaning up cleanly.', error);
+    active=false; starting=false;
+    clearTimeout(connectingTimer); clearTimeout(micWatchdogTimer);
+    removeThinking(); finalizePartialTranscript();
+    setState(''); setHintMessage('Click the orb to activate mic permission and start your guided demo');
+    saveLeadSnapshot();
+    syncToSheets(finishing?'completion':'call-end', { keepalive:true, preferBeacon:true });
+    if (finishing) { setHintMessage('All set \u2014 taking you to the next step\u2026'); goToNextStep(); }
+  }
+
+  /* ─────────────────────────────────────────────
+     FIX 2 — mic watchdog: guard against firing
+     after the call has already ended
+  ───────────────────────────────────────────── */
   function keepMicOpen(reason) {
     if (!vapi || !active) return;
-
+    try { if (typeof vapi.setMuted==='function') vapi.setMuted(false); }
+    catch(e) { console.warn('ARIA: could not unmute mic after '+reason+':', e); }
     try {
-      if (typeof vapi.setMuted === 'function') {
-        vapi.setMuted(false);
-      }
-    } catch (e) {
-      console.warn('ARIA: could not unmute mic after ' + reason + ':', e);
-    }
-
-    try {
-      if (typeof vapi.increaseMicLevel === 'function' && Date.now() - lastMicBoostAt > 25000) {
+      if (typeof vapi.increaseMicLevel==='function' && Date.now()-lastMicBoostAt > 25000) {
         lastMicBoostAt = Date.now();
-        vapi.increaseMicLevel(1.35).catch(function(error) {
-          console.warn('ARIA: mic boost skipped after ' + reason + ':', error);
-        });
+        vapi.increaseMicLevel(1.35).catch(function(error) { console.warn('ARIA: mic boost skipped after '+reason+':', error); });
       }
-    } catch (e) {
-      console.warn('ARIA: mic boost unavailable after ' + reason + ':', e);
-    }
+    } catch(e) { console.warn('ARIA: mic boost unavailable after '+reason+':', e); }
   }
 
   function scheduleMicWatchdog() {
     clearTimeout(micWatchdogTimer);
     if (!active) return;
-
     micWatchdogTimer = setTimeout(function() {
+      /* FIX 2 — bail immediately if call ended before this timer fired */
       if (!active) return;
-      if (document.body.classList.contains('speaking')) {
-        scheduleMicWatchdog();
-        return;
-      }
-      if (!lastUserTranscriptAt || Date.now() - lastUserTranscriptAt > 18000) {
+      if (document.body.classList.contains('speaking')) { scheduleMicWatchdog(); return; }
+      if (!lastUserTranscriptAt || Date.now()-lastUserTranscriptAt > 18000) {
         keepMicOpen('mic-watchdog');
         console.warn('ARIA: no user transcript detected recently; refreshed mic state.');
       }
@@ -1508,58 +774,21 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function isFatalVapiError(error) {
-    var type = String((error && error.type) || '');
-    var stage = String((error && error.stage) || '');
-    return /start|join|reconnect|web-call/i.test(type + ' ' + stage);
+    var type  = String((error&&error.type)  || '');
+    var stage = String((error&&error.stage) || '');
+    return /start|join|reconnect|web-call/i.test(type+' '+stage);
   }
 
-  function isMeetingEndedError(error) {
-    return /meeting.*ended|ended.*meeting|ejection|ejected|left-meeting/i.test(getErrorText(error));
-  }
-
-  function getErrorText(error) {
-    if (!error) return '';
-    if (typeof error === 'string') return error;
-
-    var parts = [
-      error.message,
-      error.name,
-      error.type,
-      error.stage,
-      error.error && error.error.message,
-      error.error && error.error.type,
-      error.error && error.error.name,
-      error.error && error.error.toString && error.error.toString()
-    ];
-
-    try { parts.push(JSON.stringify(error)); } catch (_) {}
-    return parts.filter(Boolean).join(' ');
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-     TRANSCRIPT PROCESSING
-  ═══════════════════════════════════════════════════════════════ */
   function handleFinalTranscript(message) {
-    var text = extractMessageText(message);
-    if (!text) return;
-
+    var text = extractMessageText(message); if (!text) return;
     var role = getMessageRole(message);
-    var transcriptKey = role + '|' + text;
-    if (transcriptKey === lastTranscriptKey) return;
+    var transcriptKey = role+'|'+text;
+    if (transcriptKey===lastTranscriptKey) return;
     lastTranscriptKey = transcriptKey;
-
-    bookingLead.rawTranscript.push({
-      at:   new Date().toISOString(),
-      role: role,
-      text: text
-    });
-
+    bookingLead.rawTranscript.push({ at: new Date().toISOString(), role:role, text:text });
     detectLeadFields(text, role);
     scheduleSheetSync('transcript-update');
-
-    if (role === 'assistant' && isCompletionPhrase(text)) {
-      finishConversationAndAdvance();
-    }
+    if (role==='assistant' && isCompletionPhrase(text)) { finishConversationAndAdvance(); }
   }
 
   function isCompletionPhrase(text) {
@@ -1568,279 +797,97 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function handleConversationUpdate(message) {
-    var messages = Array.isArray(message.messages)
-      ? message.messages
-      : Array.isArray(message.conversation)
-        ? message.conversation
-        : [];
-
-    var reversed = messages.slice().reverse();
-    var lastAssistant = null;
-    for (var i = 0; i < reversed.length; i++) {
-      if (getMessageRole(reversed[i]) === 'assistant' && extractMessageText(reversed[i])) {
-        lastAssistant = reversed[i];
-        break;
-      }
-    }
+    var messages = Array.isArray(message.messages) ? message.messages : Array.isArray(message.conversation) ? message.conversation : [];
+    var reversed = messages.slice().reverse(); var lastAssistant = null;
+    for (var i=0; i<reversed.length; i++) { if (getMessageRole(reversed[i])==='assistant' && extractMessageText(reversed[i])) { lastAssistant=reversed[i]; break; } }
     if (lastAssistant) handleFinalTranscript(lastAssistant);
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     COMPLETION FLOW
-  ═══════════════════════════════════════════════════════════════ */
   function finishConversationAndAdvance() {
     if (finishing) return;
-
-    finishing = true;
-    bookingLead.completionPhrase = true;
-    saveLeadSnapshot();
-    syncToSheets('completion');
+    finishing=true; bookingLead.completionPhrase=true;
+    saveLeadSnapshot(); syncToSheets('completion');
     setHintMessage('All set \u2014 taking you to the next step\u2026');
-
     clearTimeout(completionRedirectTimer);
     completionRedirectTimer = setTimeout(function() {
-      if (vapi && active) {
-        try { vapi.stop(); } catch (e) {
-          console.warn('ARIA: Could not stop Vapi before redirect:', e);
-        }
-      }
+      if (vapi && active) { try { vapi.stop(); } catch(e) { console.warn('ARIA: Could not stop Vapi before redirect:', e); } }
       goToNextStep();
     }, COMPLETION_REDIRECT_DELAY_MS);
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     SPOKEN TEXT NORMALISATION
-  ═══════════════════════════════════════════════════════════════ */
   var PHONETIC_MAP = {
-    alpha:'a', bravo:'b', charlie:'c', delta:'d', echo:'e',
-    foxtrot:'f', golf:'g', hotel:'h', india:'i', juliet:'j',
-    kilo:'k', lima:'l', mike:'m', november:'n', oscar:'o',
-    papa:'p', quebec:'q', romeo:'r', sierra:'s', tango:'t',
-    uniform:'u', victor:'v', whiskey:'w', xray:'x', yankee:'y',
-    zulu:'z',
-    apple:'a', boy:'b', cat:'c', dog:'d', edward:'e',
-    frank:'f', george:'g', henry:'h', ida:'i', john:'j',
-    king:'k', love:'l', mary:'m', nancy:'n', ocean:'o',
-    peter:'p', queen:'q', robert:'r', sam:'s', thomas:'t',
-    uncle:'u', william:'w', young:'y', zebra:'z'
+    alpha:'a',bravo:'b',charlie:'c',delta:'d',echo:'e',foxtrot:'f',golf:'g',hotel:'h',india:'i',juliet:'j',
+    kilo:'k',lima:'l',mike:'m',november:'n',oscar:'o',papa:'p',quebec:'q',romeo:'r',sierra:'s',tango:'t',
+    uniform:'u',victor:'v',whiskey:'w',xray:'x',yankee:'y',zulu:'z',
+    apple:'a',boy:'b',cat:'c',dog:'d',edward:'e',frank:'f',george:'g',henry:'h',ida:'i',john:'j',
+    king:'k',love:'l',mary:'m',nancy:'n',ocean:'o',peter:'p',queen:'q',robert:'r',sam:'s',thomas:'t',
+    uncle:'u',william:'w',young:'y',zebra:'z'
   };
-
-  function resolvePhonetic(token) {
-    var t = token.toLowerCase();
-    if (t.length === 1) return t;
-    return PHONETIC_MAP[t] || token;
-  }
-
+  function resolvePhonetic(token) { var t=token.toLowerCase(); if (t.length===1) return t; return PHONETIC_MAP[t]||token; }
   function normalizeSpokenIdentifier(raw) {
     return raw
-      .replace(/\bat\b/gi,         '@')
-      .replace(/\bdot\b/gi,        '.')
-      .replace(/\bperiod\b/gi,     '.')
-      .replace(/\bunderscore\b/gi, '_')
-      .replace(/\bdash\b/gi,       '-')
-      .replace(/\bhyphen\b/gi,     '-')
-      .split(/\s+/)
-      .map(resolvePhonetic)
-      .join('')
-      .replace(/\s+/g, '')
-      .toLowerCase();
+      .replace(/\bat\b/gi,'@').replace(/\bdot\b/gi,'.').replace(/\bperiod\b/gi,'.').replace(/\bunderscore\b/gi,'_').replace(/\bdash\b/gi,'-').replace(/\bhyphen\b/gi,'-')
+      .split(/\s+/).map(resolvePhonetic).join('').replace(/\s+/g,'').toLowerCase();
   }
-
   function extractSpokenEmail(text) {
     var directMatch = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i);
     if (directMatch) return directMatch[0].toLowerCase();
-
-    var spokenMatch = text.match(
-      /([A-Za-z0-9 .]+?)\s+(?:at)\s+([A-Za-z0-9 .]+?)\s+(?:dot)\s+([A-Za-z]{2,})/i
-    );
+    var spokenMatch = text.match(/([A-Za-z0-9 .]+?)\s+(?:at)\s+([A-Za-z0-9 .]+?)\s+(?:dot)\s+([A-Za-z]{2,})/i);
     if (spokenMatch) {
-      var local  = normalizeSpokenIdentifier(spokenMatch[1]);
-      var domain = normalizeSpokenIdentifier(spokenMatch[2]);
-      var tld    = normalizeSpokenIdentifier(spokenMatch[3]);
-      var email  = local + '@' + domain + '.' + tld;
+      var local=normalizeSpokenIdentifier(spokenMatch[1]), domain=normalizeSpokenIdentifier(spokenMatch[2]), tld=normalizeSpokenIdentifier(spokenMatch[3]);
+      var email=local+'@'+domain+'.'+tld;
       if (/^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email)) return email;
     }
-
     return null;
   }
-
-  /* ═══════════════════════════════════════════════════════════════
-     TEXT EXTRACTION
-  ═══════════════════════════════════════════════════════════════ */
   function extractMessageText(message) {
     if (!message) return '';
-    if (Array.isArray(message.content)) {
-      return message.content
-        .map(function(part) {
-          return typeof part === 'string' ? part : (part.text || part.content || '');
-        })
-        .join(' ')
-        .trim();
-    }
-    return String(
-      message.transcript || message.text || message.content || message.message || ''
-    ).trim();
+    if (Array.isArray(message.content)) { return message.content.map(function(part) { return typeof part==='string'?part:(part.text||part.content||''); }).join(' ').trim(); }
+    return String(message.transcript||message.text||message.content||message.message||'').trim();
   }
-
-  /* FIX #15 — role detection: check .role field first; only fall back to .type
-     if .role is absent. Previously the regex tested message.type which caused
-     'transcript' messages to always resolve to 'unknown'. */
   function getMessageRole(message) {
     if (!message) return 'unknown';
-    /* Prefer explicit role field */
-    var roleField = String(message.role || '');
-    if (roleField) {
-      if (/user|customer|human/i.test(roleField))      return 'user';
-      if (/assistant|bot|aria|ai/i.test(roleField))    return 'assistant';
-    }
-    /* Fall back to type/speaker only when role is absent */
-    var typeField = String(message.type || message.speaker || '');
-    if (/user|customer|human/i.test(typeField))        return 'user';
-    if (/assistant|bot|aria|ai/i.test(typeField))      return 'assistant';
+    var roleField = String(message.role||'');
+    if (roleField) { if (/user|customer|human/i.test(roleField)) return 'user'; if (/assistant|bot|aria|ai/i.test(roleField)) return 'assistant'; }
+    var typeField = String(message.type||message.speaker||'');
+    if (/user|customer|human/i.test(typeField)) return 'user';
+    if (/assistant|bot|aria|ai/i.test(typeField)) return 'assistant';
     return 'unknown';
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     LEAD FIELD DETECTION
-  ═══════════════════════════════════════════════════════════════ */
   function detectLeadFields(text, role) {
-
-    var emailFound = extractSpokenEmail(text);
-    if (emailFound) bookingLead.email = emailFound;
-
+    var emailFound = extractSpokenEmail(text); if (emailFound) bookingLead.email = emailFound;
     var phone = text.match(/(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
     if (phone && !bookingLead.phone) bookingLead.phone = phone[0].trim();
-
-    var nameWithPrefix = text.match(
-      /(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i
-    );
-    if (nameWithPrefix) {
-      bookingLead.name = cleanValue(nameWithPrefix[1]);
-    } else if (role === 'user' && !bookingLead.name) {
-      var bareName = /^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text);
-      if (bareName && text.length < 40) {
-        bookingLead.name = cleanValue(bareName[1]);
-      }
-    }
-
-    if (!bookingLead.businessName) {
-      var biz = text.match(
-        /(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i
-      );
-      if (biz) bookingLead.businessName = cleanValue(biz[1]);
-    }
-
-    if (!bookingLead.location) {
-      var loc = text.match(
-        /(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i
-      );
-      if (loc) bookingLead.location = cleanValue(loc[1]);
-    }
-
-    if (!bookingLead.appointmentTime) {
-      var timePattern = text.match(
-        /(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?) (?:at|on|for|a[t]?)?\s*((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next week|\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening)[^,.!?]{0,40})/i
-      );
-      if (timePattern) bookingLead.appointmentTime = cleanValue(timePattern[1]);
-    }
-
-    if (!bookingLead.availability) {
-      var availPattern = text.match(
-        /\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i
-      );
-      if (availPattern) bookingLead.availability = cleanValue((availPattern[1] + availPattern[2]).trim());
-    }
-
-    if (!bookingLead.bookingIntent) {
-      bookingLead.bookingIntent = /\b(book|booking|appointment|schedule|calendar|call|consultation|meeting|slot)\b/i.test(text);
-    }
-
-    if (!bookingLead.service) {
-      var svc = text.match(
-        /(?:(?:my |our )?(?:service is|services? (?:include|are)|we (?:offer|do|provide|specialize in|focus on)|i (?:offer|do|provide|specialize in|help with)|primary service is|main service is))\s+([^,.!?]{3,80})/i
-      );
-      if (svc) bookingLead.service = cleanValue(svc[1]);
-    }
-
-    if (!bookingLead.pain) {
-      var pain = text.match(
-        /(?:(?:my |our |the )?(?:biggest (?:challenge|problem|issue|struggle) is|challenge is|problem is|pain (?:point )?is|struggling with|having trouble with|issue is|i (?:need help|can't|cannot) (?:with )?|trying to (?:fix|solve|improve)))\s+([^,.!?]{3,100})/i
-      );
-      if (pain) bookingLead.pain = cleanValue(pain[1]);
-    }
-
-    if (!bookingLead.spend) {
-      var spend = text.match(
-        /(?:(?:(?:monthly |weekly |annual |current )?(?:budget|spend|spending|ad spend|revenue|make|earn|doing|bringing in)) (?:is |of |about |around |roughly )?)(\$[\d,]+(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?|\d+(?:,\d{3})*(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?)/i
-      );
-      if (spend) bookingLead.spend = cleanValue(spend[1]);
-    }
-
+    var nameWithPrefix = text.match(/(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i);
+    if (nameWithPrefix) { bookingLead.name = cleanValue(nameWithPrefix[1]); }
+    else if (role==='user' && !bookingLead.name) { var bareName=/^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text); if (bareName && text.length<40) bookingLead.name=cleanValue(bareName[1]); }
+    if (!bookingLead.businessName) { var biz=text.match(/(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i); if (biz) bookingLead.businessName=cleanValue(biz[1]); }
+    if (!bookingLead.location) { var loc=text.match(/(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i); if (loc) bookingLead.location=cleanValue(loc[1]); }
+    if (!bookingLead.appointmentTime) { var tp=text.match(/(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?) (?:at|on|for|a[t]?)?\s*((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next week|\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening)[^,.!?]{0,40})/i); if (tp) bookingLead.appointmentTime=cleanValue(tp[1]); }
+    if (!bookingLead.availability) { var av=text.match(/\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i); if (av) bookingLead.availability=cleanValue((av[1]+av[2]).trim()); }
+    if (!bookingLead.bookingIntent) { bookingLead.bookingIntent=/\b(book|booking|appointment|schedule|calendar|call|consultation|meeting|slot)\b/i.test(text); }
+    if (!bookingLead.service) { var svc=text.match(/(?:(?:my |our )?(?:service is|services? (?:include|are)|we (?:offer|do|provide|specialize in|focus on)|i (?:offer|do|provide|specialize in|help with)|primary service is|main service is))\s+([^,.!?]{3,80})/i); if (svc) bookingLead.service=cleanValue(svc[1]); }
+    if (!bookingLead.pain) { var pain=text.match(/(?:(?:my |our |the )?(?:biggest (?:challenge|problem|issue|struggle) is|challenge is|problem is|pain (?:point )?is|struggling with|having trouble with|issue is|i (?:need help|can't|cannot) (?:with )?|trying to (?:fix|solve|improve)))\s+([^,.!?]{3,100})/i); if (pain) bookingLead.pain=cleanValue(pain[1]); }
+    if (!bookingLead.spend) { var spend=text.match(/(?:(?:(?:monthly |weekly |annual |current )?(?:budget|spend|spending|ad spend|revenue|make|earn|doing|bringing in)) (?:is |of |about |around |roughly )?)(\$[\d,]+(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?|\d+(?:,\d{3})*(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?)/i); if (spend) bookingLead.spend=cleanValue(spend[1]); }
     saveLeadSnapshot();
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     HELPERS
-  ═══════════════════════════════════════════════════════════════ */
-  function cleanValue(value) {
-    return value
-      .replace(/\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i, '')
-      .replace(/[.!?,]+$/, '')
-      .trim();
-  }
+  function cleanValue(value) { return value.replace(/\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i,'').replace(/[.!?,]+$/,'').trim(); }
+  function saveLeadSnapshot() { if (!isStorageAvailable()) return; try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); } catch(e) { console.warn('ARIA: Could not save lead snapshot:', e); } }
+  function goToNextStep() { window.location.href = NEXT_STEP_URL; }
 
-  function saveLeadSnapshot() {
-    if (!isStorageAvailable()) return;   /* FIX #11 */
-    try {
-      localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead));
-    } catch (e) {
-      console.warn('ARIA: Could not save lead snapshot:', e);
-    }
-  }
-
-  function goToNextStep() {
-    window.location.href = NEXT_STEP_URL;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-     PAGE INIT
-  ═══════════════════════════════════════════════════════════════ */
   document.addEventListener('DOMContentLoaded', function() {
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        document.body.classList.add('page-ready');
-      });
-    });
-
-    /* Pre-warm the SDK — load it in the background so first tap is fast */
-    getVapiConstructor().catch(function(error) {
-      console.error('ARIA WARNING: Vapi SDK preload failed:', error);
-    });
-
-    /* Warn if SDK still not loaded after 3 s (likely CSP or ad-blocker) */
-    setTimeout(function() {
-      if (!VapiConstructor) {
-        console.error(
-          'ARIA WARNING: Vapi SDK did not load within 3 s. ' +
-          'Check for network errors, ad-blockers, or Content-Security-Policy headers. ' +
-          'If using a self-hosted CSP, allowlist esm.sh and cdn.jsdelivr.net.'
-        );
-      }
-    }, 3000);
-
-    /* Set initial idle status text (FIX #23) */
+    requestAnimationFrame(function() { requestAnimationFrame(function() { document.body.classList.add('page-ready'); }); });
+    getVapiConstructor().catch(function(error) { console.error('ARIA WARNING: Vapi SDK preload failed:', error); });
+    setTimeout(function() { if (!VapiConstructor) { console.error('ARIA WARNING: Vapi SDK did not load within 3 s. Check for network errors, ad-blockers, or CSP headers.'); } }, 3000);
     setStatusText('idle');
-
     console.info('ARIA: lead sync target is', ARIA_SHEETS_WEBHOOK_URL);
   });
 
-  /* Persist lead + sync when tab closes or navigates away */
   window.addEventListener('pagehide', function() {
     saveLeadSnapshot();
-    syncToSheets(
-      active ? 'pagehide-active-call' : 'pagehide',
-      { preferBeacon: true }
-    );
+    syncToSheets(active?'pagehide-active-call':'pagehide', { preferBeacon:true });
   });
 </script>
 </body>
