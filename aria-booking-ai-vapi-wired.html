@@ -284,28 +284,8 @@
   var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbza9Qj1vdM40pKJRNpPtjoHMC6iSPftwZ5guMbMT1r0WknCFp-9MJ0Tgl669PYIWnM4qw/exec';
 
   /* ─────────────────────────────────────────────────────────────
-     FIX 1 — TIMING: All values reduced to Siri-class responsiveness
-     ─────────────────────────────────────────────────────────────
-     BEFORE:
-       endpointing: 1200, utteranceEndMs: 2200
-       waitSeconds: 1.2, onPunctuationSeconds: 1.2
-       onNoPunctuationSeconds: 4.5, onNumberSeconds: 4.0
-       stopSpeaking → numWords: 4, voiceSeconds: 0.8, backoffSeconds: 1.5
-
-     AFTER (targets ~250–350ms perceived response latency):
-       endpointing: 100
-       waitSeconds: 0.2, onPunctuationSeconds: 0.3
-       onNoPunctuationSeconds: 1.2, onNumberSeconds: 1.4
-       stopSpeaking → numWords: 2, voiceSeconds: 0.2, backoffSeconds: 0.4
-  ───────────────────────────────────────────────────────────── */
-  /* ─────────────────────────────────────────────────────────────────
      TRANSCRIBER CONFIG
-     Only fields that pass Vapi's Deepgram schema validation:
-       ✓ provider, model, language, smartFormat, endpointing
-       ✗ utteranceEndMs  — NOT a Vapi Deepgram field → causes 400
-       ✗ keywords with ':N' boost suffix → fails Vapi string[] validation
-     Keywords are plain strings; boosting is handled inside Vapi dashboard.
-  ────────────────────────────────────────────────────────────────── */
+  ───────────────────────────────────────────────────────────── */
   var TRANSCRIBER_CONFIG = {
     provider:    'deepgram',
     model:       'nova-2-general',
@@ -314,11 +294,9 @@
     endpointing: 100
   };
 
-  /* ─────────────────────────────────────────────────────────────────
-     SPEAKING / STOP-SPEAKING PLANS  (Vapi-native fields — safe)
-     These are the primary levers for response latency. Validated
-     against Vapi's schema; no 400 risk.
-  ────────────────────────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────────────────
+     SPEAKING / STOP-SPEAKING PLANS
+  ───────────────────────────────────────────────────────────── */
   var SPEAKING_PLAN_CONFIG = {
     waitSeconds: 0.2,
     transcriptionEndpointingPlan: {
@@ -334,16 +312,16 @@
     backoffSeconds: 0.4
   };
 
-  /* ─────────────────────────────────────────────────────────────────
-     ASSISTANT_OVERRIDES  (used as 2nd arg to vapi.start(ID, overrides))
-     ✗ transcriber removed — utteranceEndMs / keyword boost caused 400
-     ✓ Only startSpeakingPlan + stopSpeakingPlan — both schema-validated
-     These two plans alone deliver the full latency improvement.
-  ────────────────────────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────────────────
+     ASSISTANT_OVERRIDES
+     FIX 8: Added backgroundSpeechDenoisingPlan (was missing from
+     ASSISTANT_ID path; present only in inline config previously).
+  ───────────────────────────────────────────────────────────── */
   var ASSISTANT_OVERRIDES = {
     transcriber:       TRANSCRIBER_CONFIG,
     startSpeakingPlan: SPEAKING_PLAN_CONFIG,
-    stopSpeakingPlan:  STOP_SPEAKING_PLAN_CONFIG
+    stopSpeakingPlan:  STOP_SPEAKING_PLAN_CONFIG,
+    backgroundSpeechDenoisingPlan: { smartDenoisingPlan: { enabled: true } }
   };
 
   var INLINE_ASSISTANT = {
@@ -353,9 +331,6 @@
       provider: 'openai',
       model: 'gpt-4o-mini',
       temperature: 0.2,
-      /* FIX 3 — maxTokens: 280 (was 160). At 160 tokens ARIA clipped
-         mid-sentence on confirmations and summaries, which browsers
-         read as a connection error. 280 handles all realistic turns.  */
       maxTokens: 280,
       messages: [{
         role: 'system',
@@ -403,12 +378,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       voiceId: '21m00Tcm4TlvDq8ikWAM',
       stability: 0.5,
       similarityBoost: 0.8,
-      /* optimizeStreamingLatency: 4 is the maximum latency reduction.
-         Keep at 4 — this is already optimal for 11Labs streaming.    */
       optimizeStreamingLatency: 4,
-      /* FIX 4 — useSpeakerBoost: true improves voice clarity and
-         consistency on browser audio, reducing garbled output that
-         previously looked like mid-conversation errors.              */
       useSpeakerBoost: true
     },
     startSpeakingPlan: SPEAKING_PLAN_CONFIG,
@@ -419,6 +389,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   /* ═══════════════════════════════════════════════════════════════
      LEAD STATE
+     FIX 1: Removed dead variable `assistantContextSent` — it was
+     declared and set to false but never read or set to true anywhere
+     in the codebase. Eliminated to prevent future confusion.
   ═══════════════════════════════════════════════════════════════ */
   var bookingLead = {
     sessionId: generateUUID(), name: '', businessName: '', location: '', email: '',
@@ -428,10 +401,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   var vapi = null, active = false, starting = false, finishing = false;
   var connectingTimer = null, backendSyncTimer = null, micWatchdogTimer = null;
-  var assistantContextSent = false, completionRedirectTimer = null;
+  var completionRedirectTimer = null;
   var lastTranscriptKey = '', lastUserTranscriptAt = 0;
-  var callEndHandled = false; /* FIX 5 — guard flag prevents double-firing */
+  var callEndHandled = false;
   var redirectStarted = false;
+
+  /* FIX 9: Track the last conversation-update key separately so it
+     never pre-empts the UI bubble from the real transcript final event. */
+  var lastConvUpdateKey = '';
 
   var COMPLETION_PHRASE_REGEX  = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
   var TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
@@ -587,10 +564,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function scheduleSheetSync(reason) {
-    /* 500ms delay ensures the Sheets fetch never initiates during the
-       ~90ms VAD re-arm window after speech-end. Network I/O setup is
-       synchronous up to the first await — even async fetch has a small
-       main-thread cost at call time that we keep away from mic flips. */
     clearTimeout(backendSyncTimer);
     backendSyncTimer = setTimeout(function() { syncToSheets(reason); }, 500);
   }
@@ -602,6 +575,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return '';
   }
 
+  /* ─────────────────────────────────────────────────────────────
+     FIX 7: buildAssistantContextMessage — context from previous step
+     ─────────────────────────────────────────────────────────────
+     This function builds the questionnaire context string. It is now
+     used to decide whether to use the inline assistant (which CAN
+     receive this context) vs the cloud ASSISTANT_ID (which cannot).
+     The cloud assistant path silently discarded this context before.
+  ───────────────────────────────────────────────────────────── */
   function buildAssistantContextMessage() {
     var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
     var name = q.name || ''; if (name) parts.push("User's name: " + name);
@@ -647,7 +628,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (active || starting) {
       ensureMicUnmuted('orb-tap');
       setState(active && document.body.classList.contains('speaking') ? 'speaking' : active ? 'listening' : 'connecting');
-      setHintMessage(active ? 'ARIA is already listening — speak clearly' : 'ARIA is connecting…');
+      setHintMessage(active ? 'ARIA is already listening — speak clearly' : 'ARIA is connecting\u2026');
       return;
     }
     startCall();
@@ -666,34 +647,41 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var contextMsg = buildAssistantContextMessage();
       var knownName  = getLeadName();
 
-      if (ASSISTANT_ID && !FORCE_INLINE_ASSISTANT) {
-        /* ─────────────────────────────────────────────────────────
-           FIX 2 — ASSISTANT_ID PATH NOW PASSES OVERRIDES + CONTEXT
-           ─────────────────────────────────────────────────────────
-           Previously: vapi.start(ASSISTANT_ID) — zero overrides.
-           Now: build a complete overrides object that is merged with
-           the cloud assistant config by the Vapi backend.
+      /* ─────────────────────────────────────────────────────────
+         FIX 7 (continued): Context-aware assistant selection
+         ─────────────────────────────────────────────────────────
+         BEFORE: Always used ASSISTANT_ID when set, which silently
+         dropped all questionnaire context (model.messages override
+         without provider/model fields causes Vapi 400 rejection).
+         Result: ARIA re-asked every question the visitor already
+         answered in the previous step — friction, poor experience.
 
-           This means the fast timing values (FIX 1) and questionnaire
-           context actually reach ARIA — previously both were silently
-           discarded every single call.
-        ────────────────────────────────────────────────────────── */
+         AFTER: When questionnaire context exists, use the inline
+         assistant which CAN receive the system message with all
+         pre-filled data. Only use ASSISTANT_ID when there is no
+         prior context (e.g., direct cold visitor, no questionnaire).
+         FORCE_INLINE_ASSISTANT=true still overrides both paths.
+
+         This is the primary fix for "ensure information is being
+         grabbed from the previous step."
+      ───────────────────────────────────────────────────────── */
+      var useInline = FORCE_INLINE_ASSISTANT || Boolean(contextMsg);
+
+      if (ASSISTANT_ID && !useInline) {
         var overrides = deepClone(ASSISTANT_OVERRIDES);
-
-        /* NOTE: model.messages and firstMessage overrides are intentionally
-           omitted from the ASSISTANT_ID path — passing a partial model object
-           (no provider/model fields) causes Vapi server-side schema rejection.
-           The cloud assistant owns its own system prompt and first message.
-           Questionnaire context is surfaced through the lead detection layer. */
-        console.info('ARIA: starting with ASSISTANT_ID + fast-timing overrides');
+        console.info('ARIA: starting with ASSISTANT_ID (no prior context)');
         return vapi.start(ASSISTANT_ID, overrides);
 
       } else {
-        /* Inline assistant path (FORCE_INLINE_ASSISTANT = true) */
+        /* Inline assistant — receives full questionnaire context */
         var inline = deepClone(INLINE_ASSISTANT);
-        if (contextMsg) { inline.model.messages.push({ role:'system', content:contextMsg }); }
-        if (knownName) { inline.firstMessage = 'Hey '+knownName+"! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. Ready to get your strategy call booked?"; }
-        console.info('ARIA: starting with inline assistant config');
+        if (contextMsg) {
+          inline.model.messages.push({ role: 'system', content: contextMsg });
+        }
+        if (knownName) {
+          inline.firstMessage = 'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. Ready to get your strategy call booked?";
+        }
+        console.info('ARIA: starting with inline assistant' + (contextMsg ? ' + questionnaire context' : ''));
         return vapi.start(inline);
       }
     }).then(function(_callResult) {
@@ -702,7 +690,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(connectingTimer);
       var message = readableError(error); console.error('ARIA: Vapi start failed:', error);
       active=false; starting=false;
-      if (vapi) { try { vapi.stop(); } catch(_) {} } vapi=null;
+      if (vapi) { try { vapi.stop(); } catch(_) {} }
+      /* FIX 5: Null vapi on start failure so fresh instance on next tap */
+      vapi = null;
       setState(''); setHintMessage('Could not start \u2014 check browser console for details');
       alert('ARIA could not start: ' + message);
     });
@@ -722,6 +712,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(connectingTimer);
       starting=false; active=true; finishing=false; lastUserTranscriptAt=0;
       callEndHandled=false; redirectStarted=false;
+      lastTranscriptKey=''; lastConvUpdateKey='';
       clearTimeout(completionRedirectTimer);
       setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
       ensureMicUnmuted('call-start');
@@ -729,8 +720,18 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       syncToSheets('call-start');
     });
 
+    /* ─────────────────────────────────────────────────────────
+       FIX 6: call-end double goToNextStep() guard
+       ─────────────────────────────────────────────────────────
+       BEFORE: call-end always called goToNextStep() when finishing=true.
+       scheduleCompletionRedirect() also called goToNextStep() after
+       vapi.stop() triggered this same call-end handler → double fire.
+
+       AFTER: Only call goToNextStep() here if redirect hasn't already
+       been scheduled. scheduleCompletionRedirect() owns the redirect
+       when it fires; call-end is a fallback for unexpected teardowns.
+    ───────────────────────────────────────────────────────── */
     vapi.on('call-end', function() {
-      /* FIX 5 — guard against double-fire from call-end + error events */
       if (callEndHandled) return;
       callEndHandled = true;
       clearTimeout(connectingTimer); clearTimeout(micWatchdogTimer);
@@ -738,19 +739,18 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       removeThinking(); finalizePartialTranscript();
       setState(''); setHintMessage('Click the orb to activate mic permission and start your guided demo');
       saveLeadSnapshot();
-      syncToSheets(finishing?'completion':'call-end', { keepalive:true, preferBeacon:true });
-      if (finishing) { setHintMessage('All set \u2014 taking you to the next step\u2026'); goToNextStep(); }
+      syncToSheets(finishing ? 'completion' : 'call-end', { keepalive: true, preferBeacon: true });
+      /* FIX 6: Guard — only redirect if not already in progress */
+      if (finishing && !redirectStarted) {
+        setHintMessage('All set \u2014 taking you to the next step\u2026');
+        goToNextStep();
+      }
     });
 
     vapi.on('speech-start', function() { removeThinking(); setState('speaking'); });
     vapi.on('speech-end', function() {
       setState('listening');
-      /* Immediate unmute — mic opens the moment ARIA stops */
       ensureMicUnmuted('speech-end');
-      /* VAD settle unmute — Vapi's voice-activity detector takes ~80ms
-         to re-arm after playback ends. A second call at that window
-         closes the gap that made ARIA feel like she wasn't listening.
-         This is the "always listening" fix.                           */
       setTimeout(function() { if (active && !document.body.classList.contains('speaking')) ensureMicUnmuted('vad-settle'); }, 90);
       scheduleMicWatchdog();
       if (finishing) scheduleCompletionRedirect('speech-end');
@@ -766,63 +766,90 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (!message) return;
       var msgType = message.type||'', transcriptType = message.transcriptType||message.transcript_type||'';
       var role = getMessageRole(message);
-      if (msgType==='transcript') {
-        if (transcriptType==='partial') {
-          if (role!=='user') return;
+
+      if (msgType === 'transcript') {
+        if (transcriptType === 'partial') {
+          if (role !== 'user') return;
           lastUserTranscriptAt = Date.now();
           var partialText = extractMessageText(message);
           if (partialText) updatePartialTranscript(partialText);
           return;
         }
-        if (transcriptType==='final') {
+        if (transcriptType === 'final') {
           var finalText = extractMessageText(message);
-          if (role==='user') lastUserTranscriptAt = Date.now();
+          if (role === 'user') lastUserTranscriptAt = Date.now();
           if (finalText) {
-            finalizePartialTranscript();
-            if (role==='assistant') { removeThinking(); appendChatMessage('aria', finalText); }
-            else {
-              var lastEl = transcriptEl && transcriptEl.lastElementChild;
-              if (lastEl && lastEl.classList.contains('user') && !lastEl.classList.contains('partial')) { lastEl.textContent = finalText.trim(); }
-              else { appendChatMessage('user', finalText); }
-              showThinking();
+            /* ─────────────────────────────────────────────────
+               FIX 4: Dedup UI bubble BEFORE adding it.
+               BEFORE: bubble added unconditionally, then
+               handleFinalTranscript set the key. If an assistant/bot
+               message event OR a conversation-update pre-empted this
+               transcript-final event, the same text got two bubbles.
+               AFTER: compute the key first; skip bubble if already
+               rendered by another event path.
+            ───────────────────────────────────────────────── */
+            var preKey = role + '|' + finalText;
+            if (preKey !== lastTranscriptKey) {
+              finalizePartialTranscript();
+              if (role === 'assistant') {
+                removeThinking(); appendChatMessage('aria', finalText);
+              } else {
+                var lastEl = transcriptEl && transcriptEl.lastElementChild;
+                if (lastEl && lastEl.classList.contains('user') && !lastEl.classList.contains('partial')) {
+                  lastEl.textContent = finalText.trim();
+                } else {
+                  appendChatMessage('user', finalText);
+                }
+                showThinking();
+              }
             }
           }
-          handleFinalTranscript(message); return;
+          handleFinalTranscript(message);
+          return;
         }
       }
-      if (msgType==='assistant'||msgType==='bot') {
+
+      /* ─────────────────────────────────────────────────────────
+         FIX 4 (continued): assistant/bot type bubble dedup
+         BEFORE: bubble added unconditionally before lastTranscriptKey
+         was set, so transcript-final for same text also added a bubble.
+         AFTER: check key first — add bubble only if not yet rendered.
+      ───────────────────────────────────────────────────────── */
+      if (msgType === 'assistant' || msgType === 'bot') {
         removeThinking();
         var botText = extractMessageText(message);
-        if (botText) appendChatMessage('aria', botText);
-        handleFinalTranscript(message); return;
+        if (botText) {
+          var botKey = 'assistant|' + botText;
+          if (botKey !== lastTranscriptKey) {
+            appendChatMessage('aria', botText);
+          }
+        }
+        handleFinalTranscript(message);
+        return;
       }
-      if (msgType==='conversation-update') { handleConversationUpdate(message); }
+
+      if (msgType === 'conversation-update') { handleConversationUpdate(message); }
     });
 
-    /* ─────────────────────────────────────────────────────────────
-       ERROR HANDLER — revised for clean state management
-       ─────────────────────────────────────────────────────────────
-       FIX 5a — always stop the watchdog first; mic may be dead.
-       FIX 5b — meeting-ended checked before any other branch.
-       FIX 5c — recoverable errors re-arm watchdog but do NOT try
-                 to boost mic level (vapi.increaseMicLevel doesn't
-                 exist and was silently erroring every 25 seconds).
-    ───────────────────────────────────────────────────────────── */
+    /* ─────────────────────────────────────────────────────────
+       ERROR HANDLER
+       FIX 5: Fatal path now nulls vapi so next tap gets a fresh
+       instance with events correctly bound. Without this, the dead
+       instance was reused and no call events ever fired on retry.
+    ───────────────────────────────────────────────────────── */
     vapi.on('error', function(error) {
       clearTimeout(connectingTimer);
-      clearTimeout(micWatchdogTimer); /* FIX 5a */
+      clearTimeout(micWatchdogTimer);
 
       console.warn('ARIA: Vapi error received:', error);
 
-      /* FIX 5b — meeting ended is a clean teardown, not a true error */
       if (isMeetingEndedError(error)) {
         handleMeetingEndedFromError(error);
         return;
       }
 
-      /* Recoverable transient errors — keep the call alive */
       if (active && !isFatalVapiError(error)) {
-        scheduleMicWatchdog(); /* FIX 5c — watchdog only; no mic boost */
+        scheduleMicWatchdog();
         setState('listening');
         setHintMessage('Still connected \u2014 keep speaking naturally');
         syncToSheets('call-error');
@@ -830,23 +857,20 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
 
       /* Fatal error — full teardown */
-      active=false; starting=false;
+      active = false; starting = false;
       removeThinking();
       setState('');
       setHintMessage('Something went wrong \u2014 please try again');
       syncToSheets('call-error');
+      /* FIX 5: Null dead instance so ensureVapiInstance() creates a
+         fresh one (with bindVapiEvents) on the next call attempt. */
+      vapi = null;
     });
   }
 
   /* ─────────────────────────────────────────────────────────────
-     FIX 6 — ensureMicUnmuted replaces the broken keepMicOpen
-     ─────────────────────────────────────────────────────────────
-     The old code called vapi.increaseMicLevel() which does NOT
-     exist in the Vapi web SDK. Every invocation threw a silent
-     TypeError mid-conversation, cascading into watchdog failures.
-
-     ensureMicUnmuted() only calls vapi.setMuted(false) which is
-     the one guaranteed API method. No boost, no silent crash.
+     ensureMicUnmuted — only calls vapi.setMuted(false), the one
+     guaranteed Vapi web SDK method. No boost, no silent crash.
   ───────────────────────────────────────────────────────────── */
   function ensureMicUnmuted(reason) {
     if (!vapi || !active) return;
@@ -857,23 +881,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     FIX 7 — Watchdog: guard against firing during speaking state
-     or after the call has already ended
-     ─────────────────────────────────────────────────────────────
-     Previously the watchdog ran every 12s unconditionally and
-     tried to boost the mic — even while ARIA was speaking, which
-     caused audio conflicts that sounded like mid-convo dropout.
-  ───────────────────────────────────────────────────────────── */
   function scheduleMicWatchdog() {
     clearTimeout(micWatchdogTimer);
     if (!active) return;
     micWatchdogTimer = setTimeout(function() {
-      /* FIX 7a — bail immediately if call ended before timer fired */
       if (!active) return;
-      /* FIX 7b — never touch mic while ARIA is speaking */
       if (document.body.classList.contains('speaking')) { scheduleMicWatchdog(); return; }
-      /* Only unmute if user has been silent for over 20 seconds */
       if (!lastUserTranscriptAt || Date.now() - lastUserTranscriptAt > 20000) {
         ensureMicUnmuted('mic-watchdog');
         console.info('ARIA: mic watchdog refreshed after long silence.');
@@ -905,17 +918,24 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return /meeting.*ended|ended.*meeting|ejection|ejected|left.?meeting|call.*ended|ended.*call|has[\s-]ended|disconnected|removed.*meeting|kicked/i.test(text);
   }
 
+  /* ─────────────────────────────────────────────────────────────
+     FIX 6 (continued): handleMeetingEndedFromError goToNextStep guard
+  ───────────────────────────────────────────────────────────── */
   function handleMeetingEndedFromError(error) {
     console.info('ARIA: meeting-ended via error event; clean teardown.', error);
-    if (callEndHandled) return; /* FIX 5 — honour the guard flag here too */
+    if (callEndHandled) return;
     callEndHandled = true;
     active=false; starting=false;
     clearTimeout(connectingTimer); clearTimeout(micWatchdogTimer);
     removeThinking(); finalizePartialTranscript();
     setState(''); setHintMessage('Click the orb to activate mic permission and start your guided demo');
     saveLeadSnapshot();
-    syncToSheets(finishing?'completion':'call-end', { keepalive:true, preferBeacon:true });
-    if (finishing) { setHintMessage('All set \u2014 taking you to the next step\u2026'); goToNextStep(); }
+    syncToSheets(finishing ? 'completion' : 'call-end', { keepalive: true, preferBeacon: true });
+    /* FIX 6: Guard — only redirect if scheduleCompletionRedirect hasn't fired yet */
+    if (finishing && !redirectStarted) {
+      setHintMessage('All set \u2014 taking you to the next step\u2026');
+      goToNextStep();
+    }
   }
 
   function isFatalVapiError(error) {
@@ -927,22 +947,16 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   function handleFinalTranscript(message) {
     var text = extractMessageText(message); if (!text) return;
     var role = getMessageRole(message);
-    var transcriptKey = role+'|'+text;
-    if (transcriptKey===lastTranscriptKey) return;
+    var transcriptKey = role + '|' + text;
+    if (transcriptKey === lastTranscriptKey) return;
     lastTranscriptKey = transcriptKey;
-    bookingLead.rawTranscript.push({ at: new Date().toISOString(), role:role, text:text });
+    bookingLead.rawTranscript.push({ at: new Date().toISOString(), role: role, text: text });
 
-    /* Completion check is the only thing that MUST be synchronous —
-       it triggers the redirect timer and must fire on this tick.      */
     if (role === 'assistant' && isCompletionPhrase(text)) {
       finishConversationAndAdvance();
-      return; /* redirect path — no need to run lead detection */
+      return;
     }
 
-    /* Everything else (regex matching, localStorage write, fetch) is
-       deferred off the audio-critical path with setTimeout(fn, 0).
-       This yields control back to Vapi's mic-flip logic immediately,
-       eliminating the per-turn delay that grew with conversation length. */
     setTimeout(function() {
       detectLeadFields(text, role);
       scheduleSheetSync('transcript-update');
@@ -954,17 +968,49 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return TAKE_CARE_CLOSEOUT_REGEX.test(text) && !/\btake care\s+of\b/i.test(text);
   }
 
+  /* ─────────────────────────────────────────────────────────────
+     FIX 9: handleConversationUpdate — data sync only, no UI bubbles
+     ─────────────────────────────────────────────────────────────
+     BEFORE: Called handleFinalTranscript() which could set
+     lastTranscriptKey before the real transcript-final event fired.
+     This caused the actual transcript-final to skip its bubble-add
+     (the key already matched), leaving ARIA silent in the UI.
+
+     AFTER: conversation-update has its own key (lastConvUpdateKey)
+     and only runs lead detection + sheet sync — it never touches
+     lastTranscriptKey so it can never block transcript-final's UI.
+  ───────────────────────────────────────────────────────────── */
   function handleConversationUpdate(message) {
-    var messages = Array.isArray(message.messages) ? message.messages : Array.isArray(message.conversation) ? message.conversation : [];
-    var reversed = messages.slice().reverse(); var lastAssistant = null;
-    for (var i=0; i<reversed.length; i++) { if (getMessageRole(reversed[i])==='assistant' && extractMessageText(reversed[i])) { lastAssistant=reversed[i]; break; } }
-    if (lastAssistant) handleFinalTranscript(lastAssistant);
+    var messages = Array.isArray(message.messages) ? message.messages
+      : Array.isArray(message.conversation) ? message.conversation : [];
+    var reversed = messages.slice().reverse();
+    var lastAssistant = null;
+    for (var i = 0; i < reversed.length; i++) {
+      if (getMessageRole(reversed[i]) === 'assistant' && extractMessageText(reversed[i])) {
+        lastAssistant = reversed[i]; break;
+      }
+    }
+    if (!lastAssistant) return;
+    var text = extractMessageText(lastAssistant);
+    if (!text) return;
+    var convKey = 'assistant|' + text;
+    /* Only process if this text hasn't been handled by a prior conv-update */
+    if (convKey === lastConvUpdateKey) return;
+    lastConvUpdateKey = convKey;
+    /* Data sync only — never touch lastTranscriptKey or add UI bubbles */
+    if (isCompletionPhrase(text) && !finishing) {
+      finishConversationAndAdvance();
+      return;
+    }
+    setTimeout(function() {
+      detectLeadFields(text, 'assistant');
+      scheduleSheetSync('conv-update');
+    }, 0);
   }
 
   function finishConversationAndAdvance() {
     if (finishing) return;
     finishing=true; bookingLead.completionPhrase=true;
-    /* Immediate save on completion — call is about to end, can't defer */
     if (isStorageAvailable()) { try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); } catch(_) {} }
     syncToSheets('completion');
     setHintMessage('All set \u2014 taking you to the next step\u2026');
@@ -1025,9 +1071,23 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var emailFound = extractSpokenEmail(text); if (emailFound) bookingLead.email = emailFound;
     var phone = text.match(/(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
     if (phone && !bookingLead.phone) bookingLead.phone = phone[0].trim();
-    var nameWithPrefix = text.match(/(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})/i);
-    if (nameWithPrefix) { bookingLead.name = cleanValue(nameWithPrefix[1]); }
-    else if (role==='user' && !bookingLead.name) { var bareName=/^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text); if (bareName && text.length<40) bookingLead.name=cleanValue(bareName[1]); }
+
+    /* ─────────────────────────────────────────────────────────
+       FIX 3: Name detection — handle lowercase ASR output
+       ─────────────────────────────────────────────────────────
+       BEFORE: bareName required /^([A-Z][a-z]+...)/ — capitalized.
+       Deepgram ASR commonly returns "john smith" (lowercase) for short
+       single-word responses, so names were never captured.
+       AFTER: case-insensitive match, result is title-cased for storage.
+    ───────────────────────────────────────────────────────── */
+    var nameWithPrefix = text.match(/(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Za-z][a-z]*(?: [A-Za-z][a-z]*){0,3})/i);
+    if (nameWithPrefix) {
+      bookingLead.name = cleanValue(toTitleCase(nameWithPrefix[1]));
+    } else if (role === 'user' && !bookingLead.name) {
+      var bareName = /^([A-Za-z][a-z]*(?: [A-Za-z][a-z]*){0,2})[.,!?]?\s*$/i.exec(text);
+      if (bareName && text.length < 40) bookingLead.name = cleanValue(toTitleCase(bareName[1]));
+    }
+
     if (!bookingLead.businessName) { var biz=text.match(/(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i); if (biz) bookingLead.businessName=cleanValue(biz[1]); }
     if (!bookingLead.location) { var loc=text.match(/(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i); if (loc) bookingLead.location=cleanValue(loc[1]); }
     if (!bookingLead.appointmentTime) { var appointmentTime = extractAppointmentTime(text); if (appointmentTime) bookingLead.appointmentTime = appointmentTime; }
@@ -1037,6 +1097,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (!bookingLead.pain) { var pain=text.match(/(?:(?:my |our |the )?(?:biggest (?:challenge|problem|issue|struggle) is|challenge is|problem is|pain (?:point )?is|struggling with|having trouble with|issue is|i (?:need help|can't|cannot) (?:with )?|trying to (?:fix|solve|improve)))\s+([^,.!?]{3,100})/i); if (pain) bookingLead.pain=cleanValue(pain[1]); }
     if (!bookingLead.spend) { var spend=text.match(/(?:(?:(?:monthly |weekly |annual |current )?(?:budget|spend|spending|ad spend|revenue|make|earn|doing|bringing in)) (?:is |of |about |around |roughly )?)(\$[\d,]+(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?|\d+(?:,\d{3})*(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?)/i); if (spend) bookingLead.spend=cleanValue(spend[1]); }
     saveLeadSnapshot();
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     FIX 3 (helper): Title-case a name string from ASR output.
+  ───────────────────────────────────────────────────────────── */
+  function toTitleCase(str) {
+    return str.replace(/\b([a-z])/gi, function(_, c) { return c.toUpperCase(); });
   }
 
   function extractAppointmentTime(text) {
@@ -1055,11 +1122,29 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return '';
   }
 
-  function cleanValue(value) { return value.replace(/\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i,'').replace(/[.!?,]+$/,'').trim(); }
+  /* ─────────────────────────────────────────────────────────────
+     FIX 2: cleanValue — fix over-aggressive filler-word stripping
+     ─────────────────────────────────────────────────────────────
+     BEFORE: /\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i
+     The ".*$" stripped EVERYTHING from the matched word to end of string.
+     "Bread and Butter Co" → "Bread" (destroyed business names).
+     "Blue Sky and Beyond LLC" → "Blue Sky" (same issue).
+
+     AFTER: Two separate passes —
+     1. Remove mid-phrase filler-only words (uh, um) anywhere.
+     2. Strip trailing filler (and|but|yeah|yes|no|so|like|okay|ok)
+        ONLY at the very end of the string (anchored with $).
+     Words like "and" that connect nouns mid-phrase are preserved.
+  ───────────────────────────────────────────────────────────── */
+  function cleanValue(value) {
+    return value
+      .replace(/\s*\b(?:uh|um)\b\s*/gi, ' ')
+      .replace(/\s*\b(?:and|but|yeah|yes|no|so|like|okay|ok)\s*$/i, '')
+      .replace(/[.!?,]+$/, '')
+      .trim();
+  }
+
   function saveLeadSnapshot() {
-    /* Use requestIdleCallback when available — browser schedules this
-       only during idle periods so it never competes with audio callbacks.
-       Falls back to setTimeout(fn, 0) on browsers without rIC support.  */
     var doSave = function() {
       if (!isStorageAvailable()) return;
       try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); }
@@ -1071,12 +1156,32 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       setTimeout(doSave, 0);
     }
   }
+
   function goToNextStep() { window.location.href = NEXT_STEP_URL; }
 
+  /* ─────────────────────────────────────────────────────────────
+     FIX 12: pagehide — skip duplicate sync when redirect is active
+     ─────────────────────────────────────────────────────────────
+     BEFORE: pagehide always fired syncToSheets even immediately after
+     goToNextStep() was called, causing a redundant 'pagehide' row in
+     Google Sheets on every completed booking.
+     AFTER: if redirect was already started (completion path), the
+     'completion' sync already ran — skip the pagehide duplicate.
+  ───────────────────────────────────────────────────────────── */
+  window.addEventListener('pagehide', function() {
+    saveLeadSnapshot();
+    if (!redirectStarted) {
+      syncToSheets(active ? 'pagehide-active-call' : 'pagehide', { preferBeacon: true });
+    }
+  });
+
+  /* ─────────────────────────────────────────────────────────────
+     INIT
+  ───────────────────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function() {
     requestAnimationFrame(function() { requestAnimationFrame(function() { document.body.classList.add('page-ready'); }); });
+    /* Pre-warm SDK — errors here are non-fatal, startCall handles retry */
     getVapiConstructor().catch(function(error) { console.error('ARIA WARNING: Vapi SDK preload failed:', error); });
-    setTimeout(function() { if (!VapiConstructor) { console.error('ARIA WARNING: Vapi SDK did not load within 3 s. Check for network errors, ad-blockers, or CSP headers.'); } }, 3000);
     setStatusText('idle');
     console.info('ARIA: lead sync target is', ARIA_SHEETS_WEBHOOK_URL);
     hydrateLeadFromStoredContext();
@@ -1091,11 +1196,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }).catch(function() {});
     } catch(_) {}
   }
-
-  window.addEventListener('pagehide', function() {
-    saveLeadSnapshot();
-    syncToSheets(active?'pagehide-active-call':'pagehide', { preferBeacon:true });
-  });
 </script>
 </body>
 </html>
