@@ -346,8 +346,9 @@ ACCURACY & CONFIRMATION RULES — follow these every time without exception:
 - NAME: After the person gives their name, always repeat it back immediately. Example: "Nice to meet you, Sarah — did I get that right?" If they correct you, apologise briefly and confirm the corrected version.
 - BUSINESS NAME: After they say their business name, read it back exactly. Example: "Got it — so the business is Blue Ridge Media, correct?"
 - EMAIL: This is critical. Do not guess or infer an email from a messy transcript. Ask them to spell the part before the at sign one character at a time, then ask for the domain one character at a time, then ask for the ending such as dot com. Repeat it back slowly using letters and words, for example: "Let me read that back — S as in Sam, A as in Apple, R as in Robert, A as in Apple, H as in Henry, at Gmail dot com — is every character right?" Wait for explicit confirmation before moving on. If even one letter is unclear, ask for that part again.
+- CORRECTIONS: If the person corrects pronunciation, spelling, a date, or a time, accept the correction immediately, repeat only the corrected value, and continue. Do not argue with the transcript.
 - LOCATION: Confirm city and state together. Example: "And you're based in Austin, Texas — is that right?"
-- AVAILABILITY: Confirm the day and time clearly. Example: "So Tuesday at 2 PM works for you — perfect, I've got that."
+- AVAILABILITY: Resolve relative dates out loud. If they say "tomorrow", say the actual weekday and date. If they are unsure, suggest one week from today at 10 AM and ask if that works.
 - If anything sounds unclear or you aren't 100% sure of a spelling, ask them to spell it out. Example: "Could you spell that for me so I make sure I get it exactly right?"
 - Never guess, assume, or move on until the person verbally confirms each detail is correct.
 
@@ -593,6 +594,31 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return '';
   }
 
+  function addDays(date, days) {
+    var copy = new Date(date.getTime());
+    copy.setDate(copy.getDate() + days);
+    return copy;
+  }
+
+  function formatDateForSpeech(date) {
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatDateShort(date) {
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function getTodayContext() {
+    var now = new Date();
+    var suggested = addDays(now, 7);
+    return {
+      now: now,
+      today: formatDateForSpeech(now),
+      tomorrow: formatDateForSpeech(addDays(now, 1)),
+      suggestedSlot: formatDateForSpeech(suggested) + ' at 10 AM'
+    };
+  }
+
   /* ─────────────────────────────────────────────────────────────
      Previous-step context helpers.
 
@@ -607,6 +633,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   ───────────────────────────────────────────────────────────── */
   function buildAssistantContextMessage() {
     var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
+    var dateContext = getTodayContext();
+    parts.push('Current date: ' + dateContext.today);
+    parts.push('If user says tomorrow, that means: ' + dateContext.tomorrow);
+    parts.push('If user is unsure about availability, suggest: ' + dateContext.suggestedSlot);
     var name = q.name || ''; if (name) parts.push("User's name: " + name);
     var email = q.email || context.homepageEmail || ''; if (email) parts.push("User's email: " + email);
     if (q.challenge)      parts.push('Their challenge: '         + q.challenge);
@@ -640,6 +670,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function buildPrefilledAssistantOverrides(contextMsg) {
     var context = getStoredContext(); var q = context.questionnaire || {};
+    var dateContext = getTodayContext();
     var fullName = bookingLead.name || q.name || '';
     var firstName = getLeadName();
     var email = getKnownEmail();
@@ -649,6 +680,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var systemPrompt = [
       'You are ARIA, a sharp, warm AI booking specialist for Nexus Luma.',
       'The visitor already completed the previous questionnaire step.',
+      'Current date for this call: ' + dateContext.today + '.',
+      'If the visitor says "tomorrow", resolve it as: ' + dateContext.tomorrow + '.',
+      'If the visitor is unsure about a time, suggest: ' + dateContext.suggestedSlot + '.',
       fullName ? 'Known full name: ' + fullName + '.' : 'No name was provided in the previous step.',
       email ? 'Known email: ' + email + '.' : 'No email was provided in the previous step.',
       q.challenge ? 'Their challenge: ' + q.challenge + '.' : '',
@@ -660,6 +694,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       '- If name is known, do not ask for their name. Confirm it once instead.',
       '- If email is known, do not ask them to spell or provide their email. Confirm it once instead.',
       '- If the user says the known name or email is wrong, then ask only for the corrected item and confirm it.',
+      '- Handle pronunciation and spelling corrections naturally: accept the corrected value, repeat it once, and continue.',
+      '- For names and businesses, listen for phrases like "it is pronounced", "spelled", "with a K", "not C", "actually", or "I mean". Treat those as corrections.',
+      '- For email corrections, preserve exact characters. Understand spoken symbols: at, dot, period, dash, hyphen, underscore, plus.',
+      '- For availability, convert relative dates before confirming. Example: if today is Saturday and they say tomorrow at 2, confirm "Sunday, [date] at 2 PM".',
+      '- If they say "I am not sure", "you pick", "anytime", or similar, suggest the one-week-out 10 AM slot above and ask if it works.',
       '- After confirming known details, collect only the missing booking details: business name, city/location, and availability for the strategy call.',
       '- Ask one question at a time. Keep replies to one or two short sentences.',
       '- Do not restart the questionnaire. Lead the user forward to the next step.',
@@ -673,6 +712,9 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       firstName: firstName,
       email: email,
       questionnaireContext: contextMsg,
+      currentDate: dateContext.today,
+      tomorrowDate: dateContext.tomorrow,
+      suggestedSlot: dateContext.suggestedSlot,
       challenge: q.challenge || '',
       aiHelp: q.aiHelp || '',
       contactProcess: q.contactProcess || '',
@@ -1408,7 +1450,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function extractAppointmentTime(text) {
     var clean = String(text || '').replace(/\s+/g, ' ').trim();
-    var day = '(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|next\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\\s+week|\\d{1,2}[/-]\\d{1,2}(?:[/-]\\d{2,4})?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{1,2})';
+    if (/\b(?:not sure|don'?t know|you pick|you choose|whatever works|anytime works|any time works|no preference|open schedule)\b/i.test(clean)) {
+      return 'Suggested: ' + getTodayContext().suggestedSlot;
+    }
+    var day = '(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tomm?orrow|tmrw|next\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\\s+week|\\d{1,2}[/-]\\d{1,2}(?:[/-]\\d{2,4})?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{1,2})';
     var time = '(?:\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)|\\d{1,2}\\s*(?:in the )?(?:morning|afternoon|evening)|noon|midday)';
     var patterns = [
       new RegExp('\\b(' + day + ')\\s*(?:at|around|about|@)?\\s*(' + time + ')\\b[^.!?]{0,24}', 'i'),
@@ -1417,9 +1462,51 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     ];
     for (var i = 0; i < patterns.length; i++) {
       var match = clean.match(patterns[i]);
-      if (match) return cleanValue((match[1] + (match[2] ? ' ' + match[2] : '')).trim());
+      if (match) return normalizeAppointmentPhrase(cleanValue((match[1] + (match[2] ? ' ' + match[2] : '')).trim()));
     }
     return '';
+  }
+
+  function normalizeAppointmentPhrase(phrase) {
+    var value = String(phrase || '').replace(/\btomm?orrow\b/ig, 'tomorrow').replace(/\btmrw\b/ig, 'tomorrow');
+    var today = new Date();
+    var normalizedDate = null;
+    if (/\btoday\b/i.test(value)) normalizedDate = today;
+    else if (/\btomorrow\b/i.test(value)) normalizedDate = addDays(today, 1);
+    else if (/\bnext\s+week\b/i.test(value)) normalizedDate = addDays(today, 7);
+    else {
+      var nextWeekday = value.match(/\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+      if (nextWeekday) normalizedDate = nextDateForWeekday(nextWeekday[1], true);
+      else {
+        var weekday = value.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+        if (weekday) normalizedDate = nextDateForWeekday(weekday[1], false);
+      }
+    }
+    if (!normalizedDate) return value;
+    var timeMatch = value.match(/\b(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}\s*(?:in the )?(?:morning|afternoon|evening)|noon|midday)\b/i);
+    return formatDateShort(normalizedDate) + (timeMatch ? ' at ' + normalizeTimeForDisplay(timeMatch[1]) : '');
+  }
+
+  function nextDateForWeekday(dayName, forceNextWeek) {
+    var names = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    var target = names.indexOf(String(dayName || '').toLowerCase());
+    if (target < 0) return null;
+    var today = new Date();
+    var diff = (target - today.getDay() + 7) % 7;
+    if (diff === 0 || forceNextWeek) diff += 7;
+    return addDays(today, diff);
+  }
+
+  function normalizeTimeForDisplay(timeText) {
+    var t = String(timeText || '').replace(/\s+/g, ' ').trim();
+    if (/^noon|midday$/i.test(t)) return '12 PM';
+    var vague = t.match(/^(\d{1,2})\s*(?:in the )?(morning|afternoon|evening)$/i);
+    if (vague) {
+      var hour = Number(vague[1]);
+      var period = /morning/i.test(vague[2]) ? 'AM' : 'PM';
+      return hour + ' ' + period;
+    }
+    return t.replace(/a\.?m\.?/i, 'AM').replace(/p\.?m\.?/i, 'PM').replace(/\s+/g, ' ');
   }
 
   /* ─────────────────────────────────────────────────────────────
