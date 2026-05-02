@@ -418,6 +418,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   var COMPLETION_PHRASE_REGEX  = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
   var TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
   var COMPLETION_REDIRECT_DELAY_MS = 350;
+  var CALL_END_REDIRECT_DELAY_MS = 650;
 
   var statusEl     = document.getElementById('statusEl');
   var hintTextEl   = document.getElementById('hintText');
@@ -476,6 +477,19 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (!error) return 'Unknown error.';
     if (typeof error === 'string') return error;
     return error.message || error.name || 'Unknown error.';
+  }
+  function getStartupErrorMessage(error) {
+    var text = getErrorText(error) || readableError(error);
+    if (/\b403\b|forbidden/i.test(text)) {
+      return 'Vapi rejected this web call with 403 Forbidden. Verify the browser public key, assistant ID, Vapi allowed domains/origins, account credits, and that the assistant belongs to the same Vapi org as the public key.';
+    }
+    if (/\b401\b|unauthorized|incorrect.?api.?key/i.test(text)) {
+      return 'Vapi rejected this web call as unauthorized. Verify the browser public key and assistant ID in the ARIA page.';
+    }
+    if (/assistant.*not.*found|call\.start\.error-get-assistant/i.test(text)) {
+      return 'Vapi could not load the configured assistant. Verify ASSISTANT_ID in the ARIA page and the assistant status in Vapi.';
+    }
+    return readableError(error);
   }
 
   function scrollTranscript() {
@@ -777,11 +791,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       setState(''); setHintMessage('Click the orb to activate mic permission and start your guided demo');
       saveLeadSnapshot();
       syncToSheets(finishing ? 'completion' : 'call-end', { keepalive: true, preferBeacon: true });
-      /* FIX 6: Guard — only redirect if not already in progress */
-      if (finishing && !redirectStarted) {
-        setHintMessage('All set \u2014 taking you to the next step\u2026');
-        goToNextStep();
-      }
+      setHintMessage('Call ended \u2014 taking you to the next step\u2026');
+      scheduleCompletionRedirect('call-end', CALL_END_REDIRECT_DELAY_MS);
     });
 
     vapi.on('speech-start', function() { removeThinking(); setState('speaking'); recoverableErrorCount = 0; });
@@ -1089,11 +1100,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     setState(''); setHintMessage('Click the orb to activate mic permission and start your guided demo');
     saveLeadSnapshot();
     syncToSheets(finishing ? 'completion' : 'call-end', { keepalive: true, preferBeacon: true });
-    /* FIX 6: Guard — only redirect if scheduleCompletionRedirect hasn't fired yet */
-    if (finishing && !redirectStarted) {
-      setHintMessage('All set \u2014 taking you to the next step\u2026');
-      goToNextStep();
-    }
+    setHintMessage('Call ended \u2014 taking you to the next step\u2026');
+    scheduleCompletionRedirect('meeting-ended-error', CALL_END_REDIRECT_DELAY_MS);
   }
 
   function isFatalVapiError(error) {
@@ -1191,14 +1199,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (!document.body.classList.contains('speaking')) scheduleCompletionRedirect('completion-phrase');
   }
 
-  function scheduleCompletionRedirect(reason) {
+  function scheduleCompletionRedirect(reason, delayMs) {
     if (redirectStarted) return;
     redirectStarted = true;
     clearTimeout(completionRedirectTimer);
     completionRedirectTimer = setTimeout(function() {
       if (vapi && active) { try { vapi.stop(); } catch(e) { console.warn('ARIA: Could not stop Vapi before redirect:', e); } }
       goToNextStep();
-    }, COMPLETION_REDIRECT_DELAY_MS);
+    }, typeof delayMs === 'number' ? delayMs : COMPLETION_REDIRECT_DELAY_MS);
   }
 
   var PHONETIC_MAP = {
