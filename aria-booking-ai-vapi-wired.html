@@ -1198,34 +1198,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
       if (ASSISTANT_ID) {
         /*
-          Build a MINIMAL overrides object for dashboard-assistant calls.
-          Only include fields that Vapi's override API accepts universally:
-          - transcriber: provider + language only (timing fields live in dashboard)
-          - startSpeakingPlan / stopSpeakingPlan: safe on all plans
-          - model.messages: ONLY added when context exists, and with NO other
-            model fields — sending provider/model/temperature alongside messages
-            when using ASSISTANT_ID conflicts with the dashboard config and causes
-            the "Vapi did not return a web call" rejection.
+          Dashboard assistant path: start with the assistant ID only.
+          Browser override payloads can be rejected silently by Vapi depending
+          on plan, assistant settings, transcriber provider, or account config.
+          Keep startup reliable and configure timing/transcriber in Vapi itself.
         */
-        var overrides = {
-          transcriber:       deepClone(ASSISTANT_OVERRIDES.transcriber),
-          startSpeakingPlan: deepClone(ASSISTANT_OVERRIDES.startSpeakingPlan),
-          stopSpeakingPlan:  deepClone(ASSISTANT_OVERRIDES.stopSpeakingPlan)
-        };
-
-        if (contextMsg) {
-          /* Inject questionnaire context — messages-only, no other model fields */
-          overrides.model = { messages: [{ role: 'system', content: contextMsg }] };
-        }
-
-        if (knownName) {
-          overrides.firstMessage =
-            'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. " +
-            "Ready to get your strategy call booked?";
-        }
-
-        console.info('ARIA: starting with ASSISTANT_ID, overrides:', JSON.stringify(Object.keys(overrides)));
-        return vapi.start(ASSISTANT_ID, overrides);
+        console.info('ARIA: starting with ASSISTANT_ID only');
+        return vapi.start(ASSISTANT_ID);
 
       } else {
         /* Inline assistant — full config, context pushed after persona */
@@ -1243,18 +1222,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       }
     }).then(function(callResult) {
       /*
-        FIX: vapi.start() can resolve to null/undefined when Vapi rejects the
-        call silently (e.g. bad public key, invalid assistant ID, unsupported
-        override fields). In that case no 'call-start' event fires and no error
-        is thrown — catching the null here surfaces a clear, actionable message.
+        Some Vapi SDK builds resolve start() with a call object; others rely on
+        call-start / error events. Do not fail startup only because no object was
+        returned. The 20s connection guard will reset the UI if no event arrives.
       */
       if (callResult === null || callResult === undefined) {
-        throw new Error(
-          'Vapi did not return a web call. ' +
-          'Check: (1) VAPI_KEY is a valid public web key, not a private key. ' +
-          '(2) ASSISTANT_ID exists in your Vapi dashboard and is published. ' +
-          '(3) Your Vapi account is active and not over its usage limit.'
-        );
+        console.warn('ARIA: vapi.start() returned no call object; waiting for call-start event.');
       }
     }).catch(function(error) {
       clearTimeout(connectingTimer);
@@ -1262,6 +1235,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       console.error('ARIA: Vapi start failed:', error);
       active = false;
       starting = false;
+      if (vapi) {
+        try { vapi.stop(); } catch (_) {}
+      }
+      vapi = null;
       setState('');
       setHintMessage('Could not start \u2014 check browser console for details');
       /* Use alert() only as last resort — avoids silent failures */
