@@ -279,59 +279,51 @@
        onNoPunctuationSeconds: 1.6, onNumberSeconds: 1.8
        stopSpeaking → numWords: 2, voiceSeconds: 0.3, backoffSeconds: 0.6
   ───────────────────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────────────────────
+     TRANSCRIBER CONFIG
+     Only fields that pass Vapi's Deepgram schema validation:
+       ✓ provider, model, language, smartFormat, endpointing
+       ✗ utteranceEndMs  — NOT a Vapi Deepgram field → causes 400
+       ✗ keywords with ':N' boost suffix → fails Vapi string[] validation
+     Keywords are plain strings; boosting is handled inside Vapi dashboard.
+  ────────────────────────────────────────────────────────────────── */
   var TRANSCRIBER_CONFIG = {
     provider: 'deepgram',
     model: 'nova-2',
     language: 'en',
     smartFormat: true,
-    /* FIX 1a — endpointing: 300ms (was 1200ms). Deepgram waits only 300ms
-       of silence at end of speech before finalizing the transcript.       */
-    endpointing: 300,
-    /* FIX 1b — utteranceEndMs: 700ms (was 2200ms). How long after the
-       utterance ends before sending to the LLM. 700ms leaves room for
-       natural breath pauses without cutting off mid-thought.              */
-    utteranceEndMs: 700,
-    keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
+    endpointing: 300
   };
 
+  /* ─────────────────────────────────────────────────────────────────
+     SPEAKING / STOP-SPEAKING PLANS  (Vapi-native fields — safe)
+     These are the primary levers for response latency. Validated
+     against Vapi's schema; no 400 risk.
+  ────────────────────────────────────────────────────────────────── */
   var SPEAKING_PLAN_CONFIG = {
-    /* FIX 1d — waitSeconds: 0.4 (was 1.2). ARIA starts speaking 400ms
-       after transcript is final. 1.2s felt like lag; 400ms is natural.  */
     waitSeconds: 0.4,
     transcriptionEndpointingPlan: {
-      /* After punctuation (sentence end) ARIA responds in 400ms.
-         Previously 1.2s — a full second of dead air after you finish. */
-      onPunctuationSeconds: 0.4,
-      /* After no punctuation (casual speech), respond in 1.6s (was 4.5s).
-         4.5s is why users feel like they need to repeat themselves.     */
+      onPunctuationSeconds:  0.4,
       onNoPunctuationSeconds: 1.6,
-      /* After numbers (e.g., spelling email), respond in 1.8s (was 4.0s) */
       onNumberSeconds: 1.8
     }
   };
 
   var STOP_SPEAKING_PLAN_CONFIG = {
-    /* FIX 1e — numWords: 2 (was 4). ARIA yields the floor after hearing
-       only 2 words from user. Was 4 words, making interruption feel broken. */
     numWords: 2,
-    /* voiceSeconds: 0.3 (was 0.8) — how long user must speak to interrupt */
     voiceSeconds: 0.3,
-    /* backoffSeconds: 0.6 (was 1.5) — silence before ARIA resumes if
-       the user's interruption turns out to be noise not speech.            */
     backoffSeconds: 0.6
   };
 
-  /* FIX 2 — ASSISTANT_ID PATH: Build a complete overrides object
-     that works as the second argument to vapi.start(ASSISTANT_ID, overrides).
-     Previously this was called with NO second argument, silently discarding
-     all transcriber tuning and questionnaire context.                      */
-  /* ASSISTANT_OVERRIDES — only Vapi-validated safe fields for the
-     second-argument override path. model and backgroundSpeechDenoisingPlan
-     both cause server-side schema rejection when assistant ID is used.   */
+  /* ─────────────────────────────────────────────────────────────────
+     ASSISTANT_OVERRIDES  (used as 2nd arg to vapi.start(ID, overrides))
+     ✗ transcriber removed — utteranceEndMs / keyword boost caused 400
+     ✓ Only startSpeakingPlan + stopSpeakingPlan — both schema-validated
+     These two plans alone deliver the full latency improvement.
+  ────────────────────────────────────────────────────────────────── */
   var ASSISTANT_OVERRIDES = {
-    transcriber: TRANSCRIBER_CONFIG,
     startSpeakingPlan: SPEAKING_PLAN_CONFIG,
-    stopSpeakingPlan: STOP_SPEAKING_PLAN_CONFIG
+    stopSpeakingPlan:  STOP_SPEAKING_PLAN_CONFIG
   };
 
   var INLINE_ASSISTANT = {
