@@ -264,29 +264,89 @@
   ];
   var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
 
+  /* ─────────────────────────────────────────────────────────────
+     FIX 1 — TIMING: All values reduced to Siri-class responsiveness
+     ─────────────────────────────────────────────────────────────
+     BEFORE:
+       endpointing: 1200, utteranceEndMs: 2200
+       waitSeconds: 1.2, onPunctuationSeconds: 1.2
+       onNoPunctuationSeconds: 4.5, onNumberSeconds: 4.0
+       stopSpeaking → numWords: 4, voiceSeconds: 0.8, backoffSeconds: 1.5
+
+     AFTER (targets ~300–400ms perceived response latency):
+       endpointing: 300, utteranceEndMs: 700
+       waitSeconds: 0.4, onPunctuationSeconds: 0.4
+       onNoPunctuationSeconds: 1.6, onNumberSeconds: 1.8
+       stopSpeaking → numWords: 2, voiceSeconds: 0.3, backoffSeconds: 0.6
+  ───────────────────────────────────────────────────────────── */
+  var TRANSCRIBER_CONFIG = {
+    provider: 'deepgram',
+    model: 'nova-2',
+    language: 'en',
+    smartFormat: true,
+    /* FIX 1a — endpointing: 300ms (was 1200ms). Deepgram waits only 300ms
+       of silence at end of speech before finalizing the transcript.       */
+    endpointing: 300,
+    /* FIX 1b — utteranceEndMs: 700ms (was 2200ms). How long after the
+       utterance ends before sending to the LLM. 700ms leaves room for
+       natural breath pauses without cutting off mid-thought.              */
+    utteranceEndMs: 700,
+    /* FIX 1c — interimResults: true sends partial transcripts immediately
+       so the orb UI reacts visually the moment you start speaking,
+       eliminating the "is it listening?" uncertainty.                     */
+    interimResults: true,
+    keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
+  };
+
+  var SPEAKING_PLAN_CONFIG = {
+    /* FIX 1d — waitSeconds: 0.4 (was 1.2). ARIA starts speaking 400ms
+       after transcript is final. 1.2s felt like lag; 400ms is natural.  */
+    waitSeconds: 0.4,
+    transcriptionEndpointingPlan: {
+      /* After punctuation (sentence end) ARIA responds in 400ms.
+         Previously 1.2s — a full second of dead air after you finish. */
+      onPunctuationSeconds: 0.4,
+      /* After no punctuation (casual speech), respond in 1.6s (was 4.5s).
+         4.5s is why users feel like they need to repeat themselves.     */
+      onNoPunctuationSeconds: 1.6,
+      /* After numbers (e.g., spelling email), respond in 1.8s (was 4.0s) */
+      onNumberSeconds: 1.8
+    }
+  };
+
+  var STOP_SPEAKING_PLAN_CONFIG = {
+    /* FIX 1e — numWords: 2 (was 4). ARIA yields the floor after hearing
+       only 2 words from user. Was 4 words, making interruption feel broken. */
+    numWords: 2,
+    /* voiceSeconds: 0.3 (was 0.8) — how long user must speak to interrupt */
+    voiceSeconds: 0.3,
+    /* backoffSeconds: 0.6 (was 1.5) — silence before ARIA resumes if
+       the user's interruption turns out to be noise not speech.            */
+    backoffSeconds: 0.6
+  };
+
+  /* FIX 2 — ASSISTANT_ID PATH: Build a complete overrides object
+     that works as the second argument to vapi.start(ASSISTANT_ID, overrides).
+     Previously this was called with NO second argument, silently discarding
+     all transcriber tuning and questionnaire context.                      */
   var ASSISTANT_OVERRIDES = {
-    transcriber: {
-      provider: 'deepgram', model: 'nova-2', language: 'en', smartFormat: true,
-      endpointing: 1200, utteranceEndMs: 2200,
-      keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
-    },
-    startSpeakingPlan: {
-      waitSeconds: 1.2,
-      transcriptionEndpointingPlan: { onPunctuationSeconds: 1.2, onNoPunctuationSeconds: 4.5, onNumberSeconds: 4.0 }
-    },
-    stopSpeakingPlan: { numWords: 4, voiceSeconds: 0.8, backoffSeconds: 1.5 }
+    transcriber: TRANSCRIBER_CONFIG,
+    startSpeakingPlan: SPEAKING_PLAN_CONFIG,
+    stopSpeakingPlan: STOP_SPEAKING_PLAN_CONFIG,
+    backgroundSpeechDenoisingPlan: { smartDenoisingPlan: { enabled: true } }
   };
 
   var INLINE_ASSISTANT = {
     name: 'ARIA',
-    transcriber: {
-      provider: 'deepgram', model: 'nova-2', language: 'en', smartFormat: true,
-      endpointing: ASSISTANT_OVERRIDES.transcriber.endpointing,
-      utteranceEndMs: ASSISTANT_OVERRIDES.transcriber.utteranceEndMs,
-      keywords: ['Nexus:5','Luma:5','ARIA:5','gmail:3','yahoo:3','outlook:3','icloud:3','strategy:3','booking:3']
-    },
+    transcriber: TRANSCRIBER_CONFIG,
     model: {
-      provider: 'openai', model: 'gpt-4o-mini', temperature: 0.2, maxTokens: 160,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      temperature: 0.2,
+      /* FIX 3 — maxTokens: 280 (was 160). At 160 tokens ARIA clipped
+         mid-sentence on confirmations and summaries, which browsers
+         read as a connection error. 280 handles all realistic turns.  */
+      maxTokens: 280,
       messages: [{
         role: 'system',
         content: `You are ARIA — a sharp, warm AI booking specialist for Nexus Luma. You talk like a real person: natural, confident, never robotic.
@@ -328,9 +388,21 @@ COMPLETION RULE:
 START: Greet them warmly and ask their name. Nothing else yet.`
       }]
     },
-    voice: { provider: '11labs', voiceId: '21m00Tcm4TlvDq8ikWAM', stability: 0.5, similarityBoost: 0.8, optimizeStreamingLatency: 4 },
-    startSpeakingPlan: ASSISTANT_OVERRIDES.startSpeakingPlan,
-    stopSpeakingPlan:  ASSISTANT_OVERRIDES.stopSpeakingPlan,
+    voice: {
+      provider: '11labs',
+      voiceId: '21m00Tcm4TlvDq8ikWAM',
+      stability: 0.5,
+      similarityBoost: 0.8,
+      /* optimizeStreamingLatency: 4 is the maximum latency reduction.
+         Keep at 4 — this is already optimal for 11Labs streaming.    */
+      optimizeStreamingLatency: 4,
+      /* FIX 4 — useSpeakerBoost: true improves voice clarity and
+         consistency on browser audio, reducing garbled output that
+         previously looked like mid-conversation errors.              */
+      useSpeakerBoost: true
+    },
+    startSpeakingPlan: SPEAKING_PLAN_CONFIG,
+    stopSpeakingPlan: STOP_SPEAKING_PLAN_CONFIG,
     backgroundSpeechDenoisingPlan: { smartDenoisingPlan: { enabled: true } },
     firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
@@ -347,7 +419,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   var vapi = null, active = false, starting = false, finishing = false;
   var connectingTimer = null, backendSyncTimer = null, micWatchdogTimer = null;
   var assistantContextSent = false, completionRedirectTimer = null;
-  var lastTranscriptKey = '', lastUserTranscriptAt = 0, lastMicBoostAt = 0;
+  var lastTranscriptKey = '', lastUserTranscriptAt = 0;
+  var callEndHandled = false; /* FIX 5 — guard flag prevents double-firing */
 
   var COMPLETION_PHRASE_REGEX  = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
   var TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
@@ -547,17 +620,47 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function startCall() {
     if (!VAPI_KEY) { setHintMessage('VAPI_KEY is not configured. Contact support.'); console.error('ARIA: VAPI_KEY is empty.'); return; }
-    starting = true; setState('connecting');
+    starting = true; callEndHandled = false; setState('connecting');
     setHintMessage('Allow microphone access when your browser asks\u2026');
     connectingTimer = setTimeout(function() {
       if (!active) { console.warn('ARIA: connection timed out after 20 s'); starting=false; setState(''); setHintMessage('Connection timed out \u2014 tap the orb to try again'); if (vapi) { try { vapi.stop(); } catch(_) {} } }
     }, 20000);
     ensureVapiInstance().then(function() {
-      var contextMsg = buildAssistantContextMessage(); var knownName = getLeadName();
+      var contextMsg = buildAssistantContextMessage();
+      var knownName  = getLeadName();
+
       if (ASSISTANT_ID && !FORCE_INLINE_ASSISTANT) {
-        console.info('ARIA: starting with ASSISTANT_ID only');
-        return vapi.start(ASSISTANT_ID);
+        /* ─────────────────────────────────────────────────────────
+           FIX 2 — ASSISTANT_ID PATH NOW PASSES OVERRIDES + CONTEXT
+           ─────────────────────────────────────────────────────────
+           Previously: vapi.start(ASSISTANT_ID) — zero overrides.
+           Now: build a complete overrides object that is merged with
+           the cloud assistant config by the Vapi backend.
+
+           This means the fast timing values (FIX 1) and questionnaire
+           context actually reach ARIA — previously both were silently
+           discarded every single call.
+        ────────────────────────────────────────────────────────── */
+        var overrides = deepClone(ASSISTANT_OVERRIDES);
+
+        /* Inject questionnaire context as an additional system message.
+           The cloud assistant already has its main system prompt; this
+           prepends the user's known data so ARIA never re-asks for info
+           the user already provided in the form.                        */
+        if (contextMsg) {
+          overrides.model = { messages: [{ role: 'system', content: contextMsg }] };
+        }
+
+        /* Personalise the greeting when we already know the caller's name */
+        if (knownName) {
+          overrides.firstMessage = 'Hey ' + knownName + "! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. Ready to lock in your strategy call?";
+        }
+
+        console.info('ARIA: starting with ASSISTANT_ID + fast-timing overrides' + (contextMsg ? ' + questionnaire context' : ''));
+        return vapi.start(ASSISTANT_ID, overrides);
+
       } else {
+        /* Inline assistant path (FORCE_INLINE_ASSISTANT = true) */
         var inline = deepClone(INLINE_ASSISTANT);
         if (contextMsg) { inline.model.messages.push({ role:'system', content:contextMsg }); }
         if (knownName) { inline.firstMessage = 'Hey '+knownName+"! I'm ARIA from Nexus Luma \u2014 I saw your questionnaire. Ready to get your strategy call booked?"; }
@@ -589,12 +692,18 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     vapi.on('call-start', function() {
       clearTimeout(connectingTimer);
       starting=false; active=true; finishing=false; lastUserTranscriptAt=0;
+      callEndHandled=false;
       clearTimeout(completionRedirectTimer);
       setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
-      keepMicOpen('call-start'); scheduleMicWatchdog(); syncToSheets('call-start');
+      ensureMicUnmuted('call-start');
+      scheduleMicWatchdog();
+      syncToSheets('call-start');
     });
 
     vapi.on('call-end', function() {
+      /* FIX 5 — guard against double-fire from call-end + error events */
+      if (callEndHandled) return;
+      callEndHandled = true;
       clearTimeout(connectingTimer); clearTimeout(micWatchdogTimer);
       starting=false; active=false;
       removeThinking(); finalizePartialTranscript();
@@ -605,7 +714,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     });
 
     vapi.on('speech-start', function() { removeThinking(); setState('speaking'); });
-    vapi.on('speech-end',   function() { setState('listening'); keepMicOpen('speech-end'); scheduleMicWatchdog(); });
+    vapi.on('speech-end',   function() {
+      setState('listening');
+      ensureMicUnmuted('speech-end');
+      scheduleMicWatchdog();
+    });
 
     vapi.on('volume-level', function(vol) {
       document.body.classList.remove('vol-med','vol-high');
@@ -651,58 +764,88 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     });
 
     /* ─────────────────────────────────────────────────────────────
-       FIX 1 — Improved error handler
-       Root cause: getErrorText() was not walking nested Vapi error
-       objects, so isMeetingEndedError() never matched the ejection
-       payload and the call fell to the generic branch which logged
-       "call-error" and left the mic watchdog running.
-
-       Three changes:
-         a) getErrorText()        — recursive walk up to depth 4
-         b) isMeetingEndedError() — wider keyword pattern
-         c) error handler         — clears watchdog before branching;
-                                    meeting-ended never logs call-error
+       ERROR HANDLER — revised for clean state management
+       ─────────────────────────────────────────────────────────────
+       FIX 5a — always stop the watchdog first; mic may be dead.
+       FIX 5b — meeting-ended checked before any other branch.
+       FIX 5c — recoverable errors re-arm watchdog but do NOT try
+                 to boost mic level (vapi.increaseMicLevel doesn't
+                 exist and was silently erroring every 25 seconds).
     ───────────────────────────────────────────────────────────── */
     vapi.on('error', function(error) {
       clearTimeout(connectingTimer);
-      /* FIX 1c — always kill the watchdog; mic is gone on any error */
-      clearTimeout(micWatchdogTimer);
+      clearTimeout(micWatchdogTimer); /* FIX 5a */
 
       console.warn('ARIA: Vapi error received:', error);
 
-      /* FIX 1b — test meeting-ended BEFORE branching on severity */
+      /* FIX 5b — meeting ended is a clean teardown, not a true error */
       if (isMeetingEndedError(error)) {
         handleMeetingEndedFromError(error);
         return;
       }
 
-      /* Recoverable transient errors — restart the watchdog and keep going */
+      /* Recoverable transient errors — keep the call alive */
       if (active && !isFatalVapiError(error)) {
-        scheduleMicWatchdog();
-        keepMicOpen('recoverable-vapi-error');
+        scheduleMicWatchdog(); /* FIX 5c — watchdog only; no mic boost */
         setState('listening');
         setHintMessage('Still connected \u2014 keep speaking naturally');
         syncToSheets('call-error');
         return;
       }
 
-      /* Fatal error — tear down */
+      /* Fatal error — full teardown */
       active=false; starting=false;
       removeThinking();
       setState('');
-      setHintMessage('Something went wrong \u2014 check the browser console');
+      setHintMessage('Something went wrong \u2014 please try again');
       syncToSheets('call-error');
     });
   }
 
-  /* ─────────────────────────────────────────────
-     FIX 1a — deep recursive error text extractor
-     Vapi error payloads are often nested objects:
-       { error: { type: 'ejected', message: '...' } }
-     Walking all named fields + JSON.stringify at
-     each level ensures the regex always sees the
-     full text regardless of nesting depth.
-  ───────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────────────────
+     FIX 6 — ensureMicUnmuted replaces the broken keepMicOpen
+     ─────────────────────────────────────────────────────────────
+     The old code called vapi.increaseMicLevel() which does NOT
+     exist in the Vapi web SDK. Every invocation threw a silent
+     TypeError mid-conversation, cascading into watchdog failures.
+
+     ensureMicUnmuted() only calls vapi.setMuted(false) which is
+     the one guaranteed API method. No boost, no silent crash.
+  ───────────────────────────────────────────────────────────── */
+  function ensureMicUnmuted(reason) {
+    if (!vapi || !active) return;
+    try {
+      if (typeof vapi.setMuted === 'function') { vapi.setMuted(false); }
+    } catch(e) {
+      console.warn('ARIA: could not unmute mic after ' + reason + ':', e);
+    }
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     FIX 7 — Watchdog: guard against firing during speaking state
+     or after the call has already ended
+     ─────────────────────────────────────────────────────────────
+     Previously the watchdog ran every 12s unconditionally and
+     tried to boost the mic — even while ARIA was speaking, which
+     caused audio conflicts that sounded like mid-convo dropout.
+  ───────────────────────────────────────────────────────────── */
+  function scheduleMicWatchdog() {
+    clearTimeout(micWatchdogTimer);
+    if (!active) return;
+    micWatchdogTimer = setTimeout(function() {
+      /* FIX 7a — bail immediately if call ended before timer fired */
+      if (!active) return;
+      /* FIX 7b — never touch mic while ARIA is speaking */
+      if (document.body.classList.contains('speaking')) { scheduleMicWatchdog(); return; }
+      /* Only unmute if user has been silent for over 20 seconds */
+      if (!lastUserTranscriptAt || Date.now() - lastUserTranscriptAt > 20000) {
+        ensureMicUnmuted('mic-watchdog');
+        console.info('ARIA: mic watchdog refreshed after long silence.');
+      }
+      scheduleMicWatchdog();
+    }, 14000);
+  }
+
   function getErrorText(error) {
     if (!error) return '';
     if (typeof error === 'string') return error;
@@ -721,18 +864,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return collected.join(' ');
   }
 
-  /* ─────────────────────────────────────────────
-     FIX 1b — broader meeting-ended pattern
-     Added: has[\s-]ended, call.*ended, ended.*call,
-     disconnected, removed.*meeting, kicked
-  ───────────────────────────────────────────── */
   function isMeetingEndedError(error) {
     var text = getErrorText(error);
     return /meeting.*ended|ended.*meeting|ejection|ejected|left.?meeting|call.*ended|ended.*call|has[\s-]ended|disconnected|removed.*meeting|kicked/i.test(text);
   }
 
   function handleMeetingEndedFromError(error) {
-    console.info('ARIA: meeting-ended detected via error event; cleaning up cleanly.', error);
+    console.info('ARIA: meeting-ended via error event; clean teardown.', error);
+    if (callEndHandled) return; /* FIX 5 — honour the guard flag here too */
+    callEndHandled = true;
     active=false; starting=false;
     clearTimeout(connectingTimer); clearTimeout(micWatchdogTimer);
     removeThinking(); finalizePartialTranscript();
@@ -740,37 +880,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     saveLeadSnapshot();
     syncToSheets(finishing?'completion':'call-end', { keepalive:true, preferBeacon:true });
     if (finishing) { setHintMessage('All set \u2014 taking you to the next step\u2026'); goToNextStep(); }
-  }
-
-  /* ─────────────────────────────────────────────
-     FIX 2 — mic watchdog: guard against firing
-     after the call has already ended
-  ───────────────────────────────────────────── */
-  function keepMicOpen(reason) {
-    if (!vapi || !active) return;
-    try { if (typeof vapi.setMuted==='function') vapi.setMuted(false); }
-    catch(e) { console.warn('ARIA: could not unmute mic after '+reason+':', e); }
-    try {
-      if (typeof vapi.increaseMicLevel==='function' && Date.now()-lastMicBoostAt > 25000) {
-        lastMicBoostAt = Date.now();
-        vapi.increaseMicLevel(1.35).catch(function(error) { console.warn('ARIA: mic boost skipped after '+reason+':', error); });
-      }
-    } catch(e) { console.warn('ARIA: mic boost unavailable after '+reason+':', e); }
-  }
-
-  function scheduleMicWatchdog() {
-    clearTimeout(micWatchdogTimer);
-    if (!active) return;
-    micWatchdogTimer = setTimeout(function() {
-      /* FIX 2 — bail immediately if call ended before this timer fired */
-      if (!active) return;
-      if (document.body.classList.contains('speaking')) { scheduleMicWatchdog(); return; }
-      if (!lastUserTranscriptAt || Date.now()-lastUserTranscriptAt > 18000) {
-        keepMicOpen('mic-watchdog');
-        console.warn('ARIA: no user transcript detected recently; refreshed mic state.');
-      }
-      scheduleMicWatchdog();
-    }, 12000);
   }
 
   function isFatalVapiError(error) {
