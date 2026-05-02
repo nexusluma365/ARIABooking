@@ -1288,6 +1288,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       starting = false;
       active    = true;
       finishing = false;
+      lastUserTranscriptAt = 0;
       clearTimeout(completionRedirectTimer);
       setState('listening');
       setHintMessage('Speak naturally \u2014 ARIA will guide you');
@@ -1423,6 +1424,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(connectingTimer);
       console.error('ARIA: Vapi error:', error);
 
+      if (isMeetingEndedError(error)) {
+        handleMeetingEndedFromError(error);
+        return;
+      }
+
       if (active && !isFatalVapiError(error)) {
         keepMicOpen('recoverable-vapi-error');
         setState('listening');
@@ -1439,6 +1445,25 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       setHintMessage('Something went wrong \u2014 check the browser console');
       syncToSheets('call-error');
     });
+  }
+
+  function handleMeetingEndedFromError(error) {
+    console.warn('ARIA: Vapi reported meeting ended; closing local call state cleanly.', error);
+    active   = false;
+    starting = false;
+    clearTimeout(connectingTimer);
+    clearTimeout(micWatchdogTimer);
+    removeThinking();
+    finalizePartialTranscript();
+    setState('');
+    setHintMessage('Click the orb to activate mic permission and start your guided demo');
+    saveLeadSnapshot();
+    syncToSheets(finishing ? 'completion' : 'call-end', { keepalive: true, preferBeacon: true });
+
+    if (finishing) {
+      setHintMessage('All set \u2014 taking you to the next step\u2026');
+      goToNextStep();
+    }
   }
 
   function keepMicOpen(reason) {
@@ -1470,6 +1495,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     micWatchdogTimer = setTimeout(function() {
       if (!active) return;
+      if (document.body.classList.contains('speaking')) {
+        scheduleMicWatchdog();
+        return;
+      }
       if (!lastUserTranscriptAt || Date.now() - lastUserTranscriptAt > 18000) {
         keepMicOpen('mic-watchdog');
         console.warn('ARIA: no user transcript detected recently; refreshed mic state.');
@@ -1482,6 +1511,29 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var type = String((error && error.type) || '');
     var stage = String((error && error.stage) || '');
     return /start|join|reconnect|web-call/i.test(type + ' ' + stage);
+  }
+
+  function isMeetingEndedError(error) {
+    return /meeting.*ended|ended.*meeting|ejection|ejected|left-meeting/i.test(getErrorText(error));
+  }
+
+  function getErrorText(error) {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+
+    var parts = [
+      error.message,
+      error.name,
+      error.type,
+      error.stage,
+      error.error && error.error.message,
+      error.error && error.error.type,
+      error.error && error.error.name,
+      error.error && error.error.toString && error.error.toString()
+    ];
+
+    try { parts.push(JSON.stringify(error)); } catch (_) {}
+    return parts.filter(Boolean).join(' ');
   }
 
   /* ═══════════════════════════════════════════════════════════════
