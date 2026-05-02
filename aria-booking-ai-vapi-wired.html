@@ -561,6 +561,8 @@
   var ASSISTANT_ID = '230bdd16-e11a-413d-834b-7b1d07c26e19';
   var NEXT_STEP_URL = 'aria-strategy-apple.html';
   var VAPI_SDK_URLS = [
+    'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm',
+    'https://esm.sh/@vapi-ai/web@2.5.2?bundle',
     'https://esm.sh/@vapi-ai/web@2?bundle',
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
   ];
@@ -1090,24 +1092,50 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   var VapiConstructor = null;
   var vapiLoadPromise = null;
 
+  function resolveVapiConstructor(module) {
+    var candidates = [
+      module && module.default,
+      module && module.Vapi,
+      module && module.default && module.default.default,
+      module && module.default && module.default.Vapi,
+      module && module.default && module.default.VapiClient,
+      module && module.VapiClient
+    ];
+
+    for (var i = 0; i < candidates.length; i++) {
+      if (typeof candidates[i] === 'function') return candidates[i];
+    }
+
+    return null;
+  }
+
   function getVapiConstructor() {
     if (VapiConstructor) return Promise.resolve(VapiConstructor);
 
     if (!vapiLoadPromise) {
       vapiLoadPromise = (function tryNext(urls, errors) {
         if (!urls.length) {
+          vapiLoadPromise = null;
           return Promise.reject(new Error('Vapi web SDK could not load. ' + errors.join(' | ')));
         }
         var url = urls[0];
         var rest = urls.slice(1);
         return import(url).then(function(module) {
-          var Constructor = module.default || module.Vapi;
+          var Constructor = resolveVapiConstructor(module);
           if (typeof Constructor === 'function') {
             console.info('ARIA: Vapi SDK loaded from', url);
             VapiConstructor = Constructor;
             return Constructor;
           }
-          return tryNext(rest, errors.concat(url + ': constructor export missing'));
+          return tryNext(
+            rest,
+            errors.concat(
+              url + ': constructor export missing; exports=' +
+              Object.keys(module || {}).join(',') +
+              '; defaultExports=' +
+              Object.keys((module && module.default) || {}).join(',')
+            )
+          );
         }).catch(function(err) {
           return tryNext(rest, errors.concat(url + ': ' + readableError(err)));
         });
