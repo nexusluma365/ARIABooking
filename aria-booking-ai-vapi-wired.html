@@ -141,6 +141,24 @@
     from { transform: scale(1);    box-shadow: 0 0 18px rgba(143,255,87,0.9); }
     to   { transform: scale(1.55); box-shadow: 0 0 28px rgba(143,255,87,1);   }
   }
+  .clarity-flash {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 28px; margin-top: 10px; padding: 7px 13px; border-radius: 999px;
+    color: rgba(255,255,255,0.88); background: rgba(143,255,87,0.14);
+    border: 1px solid rgba(143,255,87,0.28); box-shadow: 0 0 0 rgba(143,255,87,0);
+    font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0; transform: translateY(-4px) scale(0.98);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+  }
+  body.listening .clarity-flash {
+    opacity: 1; transform: translateY(0) scale(1);
+    animation: speak-clear-flash 1.15s ease-in-out infinite;
+  }
+  @keyframes speak-clear-flash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(143,255,87,0.2); }
+    45%      { box-shadow: 0 0 28px 2px rgba(143,255,87,0.34); }
+  }
   .transcript-area {
     width: 100%; max-width: 500px; max-height: 0; overflow: hidden; margin-top: 0;
     display: flex; flex-direction: column; gap: 8px; opacity: 0;
@@ -244,6 +262,7 @@
         <span class="hint-dot" aria-hidden="true"></span>
         <span id="hintText">Click the orb to activate mic permission and start your guided demo</span>
       </div>
+      <div class="clarity-flash" aria-hidden="true">Speak clearly</div>
       <div class="transcript-area" id="transcriptArea" aria-live="polite" aria-label="Live conversation transcript"></div>
     </section>
   </main>
@@ -262,7 +281,7 @@
     'https://esm.sh/@vapi-ai/web@2?bundle',
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
   ];
-  var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz5H1RnBx0jYitjvd77WuylBul3OmpWMv57CvxbCKPbdRh1UKLfRmLQ10ekdPNnoanY2Q/exec';
+  var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbza9Qj1vdM40pKJRNpPtjoHMC6iSPftwZ5guMbMT1r0WknCFp-9MJ0Tgl669PYIWnM4qw/exec';
 
   /* ─────────────────────────────────────────────────────────────
      FIX 1 — TIMING: All values reduced to Siri-class responsiveness
@@ -273,11 +292,11 @@
        onNoPunctuationSeconds: 4.5, onNumberSeconds: 4.0
        stopSpeaking → numWords: 4, voiceSeconds: 0.8, backoffSeconds: 1.5
 
-     AFTER (targets ~300–400ms perceived response latency):
-       endpointing: 300, utteranceEndMs: 700
-       waitSeconds: 0.4, onPunctuationSeconds: 0.4
-       onNoPunctuationSeconds: 1.6, onNumberSeconds: 1.8
-       stopSpeaking → numWords: 2, voiceSeconds: 0.3, backoffSeconds: 0.6
+     AFTER (targets ~250–350ms perceived response latency):
+       endpointing: 100
+       waitSeconds: 0.2, onPunctuationSeconds: 0.3
+       onNoPunctuationSeconds: 1.2, onNumberSeconds: 1.4
+       stopSpeaking → numWords: 2, voiceSeconds: 0.2, backoffSeconds: 0.4
   ───────────────────────────────────────────────────────────── */
   /* ─────────────────────────────────────────────────────────────────
      TRANSCRIBER CONFIG
@@ -412,10 +431,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   var assistantContextSent = false, completionRedirectTimer = null;
   var lastTranscriptKey = '', lastUserTranscriptAt = 0;
   var callEndHandled = false; /* FIX 5 — guard flag prevents double-firing */
+  var redirectStarted = false;
 
   var COMPLETION_PHRASE_REGEX  = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
   var TAKE_CARE_CLOSEOUT_REGEX = /\btake care[.!?\s]*$/i;
-  var COMPLETION_REDIRECT_DELAY_MS = 1600;
+  var COMPLETION_REDIRECT_DELAY_MS = 350;
 
   var statusEl     = document.getElementById('statusEl');
   var hintTextEl   = document.getElementById('hintText');
@@ -518,16 +538,26 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var flat = null;
     if (questionnaire) {
       flat = questionnaire.answers
-        ? Object.assign({}, questionnaire.answers, { sessionId: questionnaire.sessionId })
+        ? Object.assign({}, questionnaire.answers, { sessionId: questionnaire.sessionId || questionnaire.answers.sessionId || '' })
         : questionnaire;
     }
     return { homepageEmail: homepageEmail, questionnaire: flat };
   }
 
+  function hydrateLeadFromStoredContext() {
+    var context = getStoredContext(); var q = context.questionnaire || {};
+    if (q.sessionId) bookingLead.sessionId = q.sessionId;
+    if (!bookingLead.name && q.name) bookingLead.name = q.name;
+    if (!bookingLead.email && (q.email || context.homepageEmail)) bookingLead.email = q.email || context.homepageEmail;
+    if (!bookingLead.service && q.aiHelp) bookingLead.service = q.aiHelp;
+    if (!bookingLead.pain && q.challenge) bookingLead.pain = q.challenge;
+    saveLeadSnapshot();
+  }
+
   function buildSheetPayload(reason) {
     var context = getStoredContext(); var q = context.questionnaire || {};
     return {
-      sessionId: bookingLead.sessionId||'', eventType: reason||'', occurredAt: new Date().toISOString(),
+      sessionId: bookingLead.sessionId||q.sessionId||'', eventType: reason||'', occurredAt: new Date().toISOString(),
       page: window.location.pathname||'', name: bookingLead.name||q.name||'',
       businessName: bookingLead.businessName||'', location: bookingLead.location||'',
       email: bookingLead.email||q.email||context.homepageEmail||'', phone: bookingLead.phone||'',
@@ -536,6 +566,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       questionnaireName: q.name||'', questionnaireBusinessType: '',
       questionnaireService: bookingLead.service||q.aiHelp||'',
       questionnairePain: bookingLead.pain||q.challenge||'', questionnaireSpend: bookingLead.spend||'',
+      questionnaireChallenge: q.challenge||'', questionnaireContactProcess: q.contactProcess||'',
+      questionnaireAiHelp: q.aiHelp||'', questionnaireSystemStatus: q.systemStatus||'',
       transcript: bookingLead.rawTranscript.map(function(t) { return '['+String(t.role||'unknown').toUpperCase()+'] '+String(t.text||''); }).join(' | '),
       updatedAt: new Date().toISOString()
     };
@@ -579,7 +611,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (q.contactProcess) parts.push('Contact process: '         + q.contactProcess);
     if (q.systemStatus)   parts.push('Current system: '          + q.systemStatus);
     if (!parts.length) return '';
-    return "IMPORTANT — context captured from the user's questionnaire before this call. You already know this information — do NOT ask for it again. Use their name naturally from the first word. Details: " + parts.join(' | ');
+    return "IMPORTANT — context captured from the user's questionnaire before this call. Treat these as prefilled lead details and do NOT ask for them again. Use their name naturally from the first word. If name or email is already provided here, only confirm it briefly if needed, then continue collecting the missing details and an actual strategy-call booking time. Details: " + parts.join(' | ');
   }
 
   var VapiConstructor = null, vapiLoadPromise = null;
@@ -612,13 +644,20 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function toggleCall(event) {
     if (event) event.stopPropagation();
-    if (active || starting) { endCall(); } else { startCall(); }
+    if (active || starting) {
+      ensureMicUnmuted('orb-tap');
+      setState(active && document.body.classList.contains('speaking') ? 'speaking' : active ? 'listening' : 'connecting');
+      setHintMessage(active ? 'ARIA is already listening — speak clearly' : 'ARIA is connecting…');
+      return;
+    }
+    startCall();
   }
   window.toggleCall = toggleCall;
 
   function startCall() {
     if (!VAPI_KEY) { setHintMessage('VAPI_KEY is not configured. Contact support.'); console.error('ARIA: VAPI_KEY is empty.'); return; }
-    starting = true; callEndHandled = false; setState('connecting');
+    hydrateLeadFromStoredContext();
+    starting = true; callEndHandled = false; redirectStarted = false; setState('connecting');
     setHintMessage('Allow microphone access when your browser asks\u2026');
     connectingTimer = setTimeout(function() {
       if (!active) { console.warn('ARIA: connection timed out after 20 s'); starting=false; setState(''); setHintMessage('Connection timed out \u2014 tap the orb to try again'); if (vapi) { try { vapi.stop(); } catch(_) {} } }
@@ -682,7 +721,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     vapi.on('call-start', function() {
       clearTimeout(connectingTimer);
       starting=false; active=true; finishing=false; lastUserTranscriptAt=0;
-      callEndHandled=false;
+      callEndHandled=false; redirectStarted=false;
       clearTimeout(completionRedirectTimer);
       setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
       ensureMicUnmuted('call-start');
@@ -714,6 +753,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
          This is the "always listening" fix.                           */
       setTimeout(function() { if (active && !document.body.classList.contains('speaking')) ensureMicUnmuted('vad-settle'); }, 90);
       scheduleMicWatchdog();
+      if (finishing) scheduleCompletionRedirect('speech-end');
     });
 
     vapi.on('volume-level', function(vol) {
@@ -928,6 +968,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (isStorageAvailable()) { try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); } catch(_) {} }
     syncToSheets('completion');
     setHintMessage('All set \u2014 taking you to the next step\u2026');
+    if (!document.body.classList.contains('speaking')) scheduleCompletionRedirect('completion-phrase');
+  }
+
+  function scheduleCompletionRedirect(reason) {
+    if (redirectStarted) return;
+    redirectStarted = true;
     clearTimeout(completionRedirectTimer);
     completionRedirectTimer = setTimeout(function() {
       if (vapi && active) { try { vapi.stop(); } catch(e) { console.warn('ARIA: Could not stop Vapi before redirect:', e); } }
@@ -984,13 +1030,29 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     else if (role==='user' && !bookingLead.name) { var bareName=/^([A-Z][a-z]+(?: [A-Z][a-z]+){0,2})[.,!?]?\s*$/.exec(text); if (bareName && text.length<40) bookingLead.name=cleanValue(bareName[1]); }
     if (!bookingLead.businessName) { var biz=text.match(/(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i); if (biz) bookingLead.businessName=cleanValue(biz[1]); }
     if (!bookingLead.location) { var loc=text.match(/(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i); if (loc) bookingLead.location=cleanValue(loc[1]); }
-    if (!bookingLead.appointmentTime) { var tp=text.match(/(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?) (?:at|on|for|a[t]?)?\s*((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|next week|\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|evening)[^,.!?]{0,40})/i); if (tp) bookingLead.appointmentTime=cleanValue(tp[1]); }
+    if (!bookingLead.appointmentTime) { var appointmentTime = extractAppointmentTime(text); if (appointmentTime) bookingLead.appointmentTime = appointmentTime; }
     if (!bookingLead.availability) { var av=text.match(/\b(anytime|flexible|any (?:day|time)|works for (?:me|us)|availability (?:is|looks))([^.!?]{0,60})/i); if (av) bookingLead.availability=cleanValue((av[1]+av[2]).trim()); }
     if (!bookingLead.bookingIntent) { bookingLead.bookingIntent=/\b(book|booking|appointment|schedule|calendar|call|consultation|meeting|slot)\b/i.test(text); }
     if (!bookingLead.service) { var svc=text.match(/(?:(?:my |our )?(?:service is|services? (?:include|are)|we (?:offer|do|provide|specialize in|focus on)|i (?:offer|do|provide|specialize in|help with)|primary service is|main service is))\s+([^,.!?]{3,80})/i); if (svc) bookingLead.service=cleanValue(svc[1]); }
     if (!bookingLead.pain) { var pain=text.match(/(?:(?:my |our |the )?(?:biggest (?:challenge|problem|issue|struggle) is|challenge is|problem is|pain (?:point )?is|struggling with|having trouble with|issue is|i (?:need help|can't|cannot) (?:with )?|trying to (?:fix|solve|improve)))\s+([^,.!?]{3,100})/i); if (pain) bookingLead.pain=cleanValue(pain[1]); }
     if (!bookingLead.spend) { var spend=text.match(/(?:(?:(?:monthly |weekly |annual |current )?(?:budget|spend|spending|ad spend|revenue|make|earn|doing|bringing in)) (?:is |of |about |around |roughly )?)(\$[\d,]+(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?|\d+(?:,\d{3})*(?:k|K|m|M)?(?:\s*(?:per|a|\/)\s*(?:month|week|year))?)/i); if (spend) bookingLead.spend=cleanValue(spend[1]); }
     saveLeadSnapshot();
+  }
+
+  function extractAppointmentTime(text) {
+    var clean = String(text || '').replace(/\s+/g, ' ').trim();
+    var day = '(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|next\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\\s+week|\\d{1,2}[/-]\\d{1,2}(?:[/-]\\d{2,4})?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{1,2})';
+    var time = '(?:\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)|\\d{1,2}\\s*(?:in the )?(?:morning|afternoon|evening)|noon|midday)';
+    var patterns = [
+      new RegExp('\\b(' + day + ')\\s*(?:at|around|about|@)?\\s*(' + time + ')\\b[^.!?]{0,24}', 'i'),
+      new RegExp('\\b(' + time + ')\\s*(?:on|for)?\\s*(' + day + ')\\b[^.!?]{0,24}', 'i'),
+      new RegExp('\\b(?:available|free|open|works for me|can do|prefer|want|schedule(?:d)?|book(?:ed)?|confirm(?:ed)?)\\s+(?:for|on|at)?\\s*(' + day + '[^.!?]{0,45}?' + time + ')', 'i')
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      var match = clean.match(patterns[i]);
+      if (match) return cleanValue((match[1] + (match[2] ? ' ' + match[2] : '')).trim());
+    }
+    return '';
   }
 
   function cleanValue(value) { return value.replace(/\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i,'').replace(/[.!?,]+$/,'').trim(); }
@@ -1017,7 +1079,18 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     setTimeout(function() { if (!VapiConstructor) { console.error('ARIA WARNING: Vapi SDK did not load within 3 s. Check for network errors, ad-blockers, or CSP headers.'); } }, 3000);
     setStatusText('idle');
     console.info('ARIA: lead sync target is', ARIA_SHEETS_WEBHOOK_URL);
+    hydrateLeadFromStoredContext();
+    tryAutoStartIfMicAlreadyGranted();
   });
+
+  function tryAutoStartIfMicAlreadyGranted() {
+    if (!navigator.permissions || !navigator.permissions.query) return;
+    try {
+      navigator.permissions.query({ name: 'microphone' }).then(function(permission) {
+        if (permission && permission.state === 'granted' && !active && !starting) startCall();
+      }).catch(function() {});
+    } catch(_) {}
+  }
 
   window.addEventListener('pagehide', function() {
     saveLeadSnapshot();

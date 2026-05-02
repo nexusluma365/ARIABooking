@@ -1005,7 +1005,7 @@ function finishQuestionnaire() {
 
   sendToSheets({ completed: true }); // ← final sync with completed flag
 
-  var payload = { completedAt: new Date().toISOString(), answers: data };
+  var payload = { sessionId: SESSION_ID, completedAt: new Date().toISOString(), answers: data };
   try {
     localStorage.setItem('nexusQuestionnaireAnswers', JSON.stringify(payload));
     localStorage.setItem('aria_booking_email', data.email);

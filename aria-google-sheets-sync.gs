@@ -27,6 +27,10 @@ var COLUMNS = [
   'questionnaireService',
   'questionnairePain',
   'questionnaireSpend',
+  'questionnaireChallenge',
+  'questionnaireContactProcess',
+  'questionnaireAiHelp',
+  'questionnaireSystemStatus',
   'transcript',
   'updatedAt'
 ];
@@ -71,6 +75,10 @@ function normalizePayload_(p) {
     questionnaireService: toStr_(p.questionnaireService),
     questionnairePain: toStr_(p.questionnairePain),
     questionnaireSpend: toStr_(p.questionnaireSpend),
+    questionnaireChallenge: toStr_(p.questionnaireChallenge),
+    questionnaireContactProcess: toStr_(p.questionnaireContactProcess),
+    questionnaireAiHelp: toStr_(p.questionnaireAiHelp),
+    questionnaireSystemStatus: toStr_(p.questionnaireSystemStatus),
     transcript: toStr_(p.transcript),
     updatedAt: toStr_(p.updatedAt) || new Date().toISOString()
   };
