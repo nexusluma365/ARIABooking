@@ -544,6 +544,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var context = getStoredContext(); var q = context.questionnaire || {};
     if (q.sessionId) bookingLead.sessionId = q.sessionId;
     if (!bookingLead.name && q.name) bookingLead.name = q.name;
+    if (!bookingLead.businessName && q.businessName) bookingLead.businessName = q.businessName;
     if (!bookingLead.email && (q.email || context.homepageEmail)) bookingLead.email = q.email || context.homepageEmail;
     if (!bookingLead.service && q.aiHelp) bookingLead.service = q.aiHelp;
     if (!bookingLead.pain && q.challenge) bookingLead.pain = q.challenge;
@@ -555,11 +556,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return {
       sessionId: bookingLead.sessionId||q.sessionId||'', eventType: reason||'', occurredAt: new Date().toISOString(),
       page: window.location.pathname||'', name: bookingLead.name||q.name||'',
-      businessName: bookingLead.businessName||'', location: bookingLead.location||'',
+      businessName: bookingLead.businessName||q.businessName||'', location: bookingLead.location||'',
       email: bookingLead.email||q.email||context.homepageEmail||'', phone: bookingLead.phone||'',
       appointmentTime: bookingLead.appointmentTime||'', availability: bookingLead.availability||'',
       bookingIntent: bookingLead.bookingIntent?'Yes':'No', completionPhrase: bookingLead.completionPhrase?'Yes':'No',
-      questionnaireName: q.name||'', questionnaireBusinessType: '',
+      questionnaireName: q.name||'', questionnaireBusinessType: q.businessName||'',
       questionnaireService: bookingLead.service||q.aiHelp||'',
       questionnairePain: bookingLead.pain||q.challenge||'', questionnaireSpend: bookingLead.spend||'',
       questionnaireChallenge: q.challenge||'', questionnaireContactProcess: q.contactProcess||'',
@@ -638,6 +639,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     parts.push('If user says tomorrow, that means: ' + dateContext.tomorrow);
     parts.push('If user is unsure about availability, suggest: ' + dateContext.suggestedSlot);
     var name = q.name || ''; if (name) parts.push("User's name: " + name);
+    var businessName = q.businessName || ''; if (businessName) parts.push("Business name: " + businessName);
     var email = q.email || context.homepageEmail || ''; if (email) parts.push("User's email: " + email);
     if (q.challenge)      parts.push('Their challenge: '         + q.challenge);
     if (q.aiHelp)         parts.push('What AI help they want: '  + q.aiHelp);
@@ -654,8 +656,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function buildContextFirstMessage() {
     var firstName = getLeadName();
+    var context = getStoredContext(); var q = context.questionnaire || {};
+    var businessName = bookingLead.businessName || q.businessName || '';
     var email = getKnownEmail();
-    if (firstName && email) return 'Hey ' + firstName + ', I have ' + email + ' from the last step. Is that correct?';
+    if (firstName && businessName && email) return 'Hey ' + firstName + ', I have ' + businessName + ' and ' + email + ' from the last step. Is that correct?';
+    if (firstName && businessName) return 'Hey ' + firstName + ', I have your business as ' + businessName + ' from the last step. Is that correct?';
     if (firstName) return 'Hey ' + firstName + ', I have your name from the previous step. Is that still correct?';
     if (email) return 'Hey, I have your email from the previous step as ' + email + '. Is that still correct?';
     return '';
@@ -672,6 +677,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var context = getStoredContext(); var q = context.questionnaire || {};
     var dateContext = getTodayContext();
     var fullName = bookingLead.name || q.name || '';
+    var businessName = bookingLead.businessName || q.businessName || '';
     var firstName = getLeadName();
     var email = getKnownEmail();
     var firstMessage = buildContextFirstMessage();
@@ -684,6 +690,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       'If the visitor says "tomorrow", resolve it as: ' + dateContext.tomorrow + '.',
       'If the visitor is unsure about a time, suggest: ' + dateContext.suggestedSlot + '.',
       fullName ? 'Known full name: ' + fullName + '.' : 'No name was provided in the previous step.',
+      businessName ? 'Known business name: ' + businessName + '.' : 'No business name was provided in the previous step.',
       email ? 'Known email: ' + email + '.' : 'No email was provided in the previous step.',
       q.challenge ? 'Their challenge: ' + q.challenge + '.' : '',
       q.aiHelp ? 'What they want AI help with: ' + q.aiHelp + '.' : '',
@@ -692,14 +699,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       '',
       'Critical flow rules:',
       '- If name is known, do not ask for their name. Confirm it once instead.',
+      '- If business name is known, do not ask for their business name. Confirm it once instead.',
       '- If email is known, do not ask them to spell or provide their email. Confirm it once instead.',
-      '- If the user says the known name or email is wrong, then ask only for the corrected item and confirm it.',
+      '- If the user says the known name, business, or email is wrong, then ask only for the corrected item and confirm it.',
       '- Handle pronunciation and spelling corrections naturally: accept the corrected value, repeat it once, and continue.',
       '- For names and businesses, listen for phrases like "it is pronounced", "spelled", "with a K", "not C", "actually", or "I mean". Treat those as corrections.',
       '- For email corrections, preserve exact characters. Understand spoken symbols: at, dot, period, dash, hyphen, underscore, plus.',
       '- For availability, convert relative dates before confirming. Example: if today is Saturday and they say tomorrow at 2, confirm "Sunday, [date] at 2 PM".',
       '- If they say "I am not sure", "you pick", "anytime", or similar, suggest the one-week-out 10 AM slot above and ask if it works.',
-      '- After confirming known details, collect only the missing booking details: business name, city/location, and availability for the strategy call.',
+      '- After confirming known details, collect only the missing booking details: city/location and availability for the strategy call.',
       '- Ask one question at a time. Keep replies to one or two short sentences.',
       '- Do not restart the questionnaire. Lead the user forward to the next step.',
       '- When name, email, business name, location, and availability are confirmed, summarize briefly and say exactly: "We are all set."',
@@ -709,6 +717,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
     var variableValues = {
       name: fullName,
+      businessName: businessName,
       firstName: firstName,
       email: email,
       questionnaireContext: contextMsg,

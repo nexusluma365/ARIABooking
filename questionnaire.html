@@ -750,8 +750,11 @@ body::before {
               <input class="clean-input" id="nameInput" type="text" placeholder="Your name" autocomplete="name" autocorrect="off" autocapitalize="words" oninput="clearError('contactError')" onblur="var v=this.value.trim();if(v){data.name=v;sendToSheets();}" onkeydown="if(event.key==='Enter')finishQuestionnaire()" aria-label="Your name">
             </div>
             <div class="input-wrap">
+              <input class="clean-input" id="businessNameInput" type="text" placeholder="Business name" autocomplete="organization" autocorrect="off" autocapitalize="words" oninput="clearError('contactError')" onblur="var v=this.value.trim();if(v){data.businessName=v;sendToSheets();}" onkeydown="if(event.key==='Enter')finishQuestionnaire()" aria-label="Business name">
+            </div>
+            <div class="input-wrap">
               <input class="clean-input" id="emailInput" type="email" placeholder="Your email" autocomplete="email" autocorrect="off" autocapitalize="none" oninput="clearError('contactError')" onblur="var v=this.value.trim();if(v&&isValidEmail(v)){data.email=v;sendToSheets();}" onkeydown="if(event.key==='Enter')finishQuestionnaire()" aria-label="Your email">
-              <div class="error-hint" id="contactError" role="alert">Please enter your name and a valid email.</div>
+              <div class="error-hint" id="contactError" role="alert">Please enter your name, business name, and a valid email.</div>
             </div>
             <button class="btn-primary" onclick="finishQuestionnaire()" type="button">Continue To Aria</button>
             <div class="step-dots" id="dots-5" aria-hidden="true"></div>
@@ -822,6 +825,7 @@ function buildLeadSyncPayload(extra) {
     aiHelp: data.aiHelp || '',
     systemStatus: data.systemStatus || '',
     name: data.name || '',
+    businessName: data.businessName || '',
     email: data.email || '',
     completed: completed,
     updatedAt: occurredAt
@@ -852,6 +856,7 @@ var data = {
   aiHelp: '',
   systemStatus: '',
   name: '',
+  businessName: '',
   email: ''
 };
 var ARIA_URL = 'aria-booking-ai-vapi-wired.html';
@@ -880,13 +885,15 @@ function isValidEmail(value) {
 
 function validateContact() {
   var name = document.getElementById('nameInput').value.trim();
+  var businessName = document.getElementById('businessNameInput').value.trim();
   var email = document.getElementById('emailInput').value.trim();
-  if (!name || !isValidEmail(email)) {
+  if (!name || !businessName || !isValidEmail(email)) {
     showError('contactError');
     shakeCard();
     return false;
   }
   data.name = name;
+  data.businessName = businessName;
   data.email = email;
   return true;
 }
