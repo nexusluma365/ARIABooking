@@ -595,12 +595,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   /* ─────────────────────────────────────────────────────────────
-     FIX 7: buildAssistantContextMessage — context from previous step
-     ─────────────────────────────────────────────────────────────
-     This function builds the questionnaire context string. It is now
-     used to decide whether to use the inline assistant (which CAN
-     receive this context) vs the cloud ASSISTANT_ID (which cannot).
-     The cloud assistant path silently discarded this context before.
+     Previous-step context helpers.
+
+     Production calls should prefer the saved Vapi assistant. Creating
+     an inline/transient assistant from the browser can be rejected by
+     Vapi account/security policy before a call exists, which surfaces
+     as POST /call/web 403. Context is passed as assistant overrides and
+     injected after call-start when the SDK supports addMessage().
   ───────────────────────────────────────────────────────────── */
   function buildAssistantContextMessage() {
     var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
@@ -612,6 +613,43 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (q.systemStatus)   parts.push('Current system: '          + q.systemStatus);
     if (!parts.length) return '';
     return "IMPORTANT — context captured from the user's questionnaire before this call. Treat these as prefilled lead details and do NOT ask for them again. Use their name naturally from the first word. If name or email is already provided here, only confirm it briefly if needed, then continue collecting the missing details and an actual strategy-call booking time. Details: " + parts.join(' | ');
+  }
+
+  function buildAssistantOverrides(contextMsg) {
+    var context = getStoredContext();
+    var q = context.questionnaire || {};
+    var overrides = deepClone(ASSISTANT_OVERRIDES);
+    var variableValues = {
+      name: q.name || bookingLead.name || '',
+      firstName: getLeadName() || '',
+      email: q.email || context.homepageEmail || bookingLead.email || '',
+      challenge: q.challenge || bookingLead.pain || '',
+      aiHelp: q.aiHelp || bookingLead.service || '',
+      contactProcess: q.contactProcess || '',
+      systemStatus: q.systemStatus || '',
+      questionnaireContext: contextMsg || ''
+    };
+    Object.keys(variableValues).forEach(function(key) {
+      if (!variableValues[key]) delete variableValues[key];
+    });
+    if (Object.keys(variableValues).length) overrides.variableValues = variableValues;
+    overrides.metadata = {
+      source: 'aria-booking-ai-vapi-wired',
+      sessionId: bookingLead.sessionId || q.sessionId || '',
+      hasQuestionnaireContext: Boolean(contextMsg)
+    };
+    return overrides;
+  }
+
+  function injectAssistantContextIfSupported() {
+    var contextMsg = buildAssistantContextMessage();
+    if (!contextMsg || !vapi || typeof vapi.addMessage !== 'function') return;
+    try {
+      vapi.addMessage({ role: 'system', content: contextMsg });
+      console.info('ARIA: questionnaire context injected with vapi.addMessage().');
+    } catch(e) {
+      console.warn('ARIA: could not inject questionnaire context with addMessage:', e);
+    }
   }
 
   var VapiConstructor = null, vapiLoadPromise = null;
@@ -666,33 +704,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var contextMsg = buildAssistantContextMessage();
       var knownName  = getLeadName();
 
-      /* ─────────────────────────────────────────────────────────
-         FIX 7 (continued): Context-aware assistant selection
-         ─────────────────────────────────────────────────────────
-         BEFORE: Always used ASSISTANT_ID when set, which silently
-         dropped all questionnaire context (model.messages override
-         without provider/model fields causes Vapi 400 rejection).
-         Result: ARIA re-asked every question the visitor already
-         answered in the previous step — friction, poor experience.
-
-         AFTER: When questionnaire context exists, use the inline
-         assistant which CAN receive the system message with all
-         pre-filled data. Only use ASSISTANT_ID when there is no
-         prior context (e.g., direct cold visitor, no questionnaire).
-         FORCE_INLINE_ASSISTANT=true still overrides both paths.
-
-         This is the primary fix for "ensure information is being
-         grabbed from the previous step."
-      ───────────────────────────────────────────────────────── */
-      var useInline = FORCE_INLINE_ASSISTANT || Boolean(contextMsg);
+      var useInline = FORCE_INLINE_ASSISTANT || !ASSISTANT_ID;
 
       if (ASSISTANT_ID && !useInline) {
-        var overrides = deepClone(ASSISTANT_OVERRIDES);
-        console.info('ARIA: starting with ASSISTANT_ID (no prior context)');
+        var overrides = buildAssistantOverrides(contextMsg);
+        console.info('ARIA: starting with saved ASSISTANT_ID' + (contextMsg ? ' + questionnaire overrides' : ''));
         return vapi.start(ASSISTANT_ID, overrides);
 
       } else {
-        /* Inline assistant — receives full questionnaire context */
+        /* Inline assistant remains available only as an explicit fallback. */
         var inline = deepClone(INLINE_ASSISTANT);
         if (contextMsg) {
           inline.model.messages.push({ role: 'system', content: contextMsg });
@@ -767,6 +787,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       clearTimeout(completionRedirectTimer);
       setState('listening'); setHintMessage('Speak naturally \u2014 ARIA will guide you');
       ensureMicUnmuted('call-start');
+      injectAssistantContextIfSupported();
       scheduleMicWatchdog();
       syncToSheets('call-start');
     });
