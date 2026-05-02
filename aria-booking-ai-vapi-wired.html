@@ -589,7 +589,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   }
 
   function getLeadName() {
-    if (bookingLead.name) return bookingLead.name;
+    if (bookingLead.name) return bookingLead.name.trim().split(/\s+/)[0];
     var ctx = getStoredContext(); var q = ctx.questionnaire;
     if (q && q.name) return q.name.trim().split(/\s+/)[0];
     return '';
@@ -656,13 +656,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function buildContextFirstMessage() {
     var firstName = getLeadName();
-    var context = getStoredContext(); var q = context.questionnaire || {};
-    var businessName = bookingLead.businessName || q.businessName || '';
     var email = getKnownEmail();
-    if (firstName && businessName && email) return 'Hey ' + firstName + ', I have ' + businessName + ' and ' + email + ' from the last step. Is that correct?';
-    if (firstName && businessName) return 'Hey ' + firstName + ', I have your business as ' + businessName + ' from the last step. Is that correct?';
+    if (firstName && email) return 'Hey ' + firstName + ', I just wanted to confirm we have all of your information correct. Is your email ' + email + '?';
+    if (email) return 'Hey, I just wanted to confirm we have all of your information correct. Is your email ' + email + '?';
     if (firstName) return 'Hey ' + firstName + ', I have your name from the previous step. Is that still correct?';
-    if (email) return 'Hey, I have your email from the previous step as ' + email + '. Is that still correct?';
     return '';
   }
 
@@ -696,6 +693,19 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       q.aiHelp ? 'What they want AI help with: ' + q.aiHelp + '.' : '',
       q.contactProcess ? 'Current contact process: ' + q.contactProcess + '.' : '',
       q.systemStatus ? 'Current system status: ' + q.systemStatus + '.' : '',
+      '',
+      'Voice and pacing:',
+      '- Speak calmly, warmly, and like a real human. Do not sound rushed or robotic.',
+      '- Keep a relaxed pace with short, natural sentences.',
+      '- Do not read a long list of known information at the start.',
+      '',
+      'Opening confirmation sequence:',
+      '- First message must only confirm the email, using this exact structure when email is known: "Hey [first name], I just wanted to confirm we have all of your information correct. Is your email [email]?"',
+      '- After asking if the email is correct, stop and wait for the user response.',
+      '- If the user confirms the email, then ask only: "And your business name is [business name], right?"',
+      '- After asking about the business name, stop and wait for the user response.',
+      '- Do not mention the business name in the first message. Do not ask the next question until the user answers the current one.',
+      '- If email or business name is wrong, ask for only the corrected item, repeat it back once, then continue.',
       '',
       'Critical flow rules:',
       '- If name is known, do not ask for their name. Confirm it once instead.',
