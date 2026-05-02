@@ -600,10 +600,11 @@ START: Greet them warmly and ask their name. Nothing else yet.`
      Production calls should prefer the saved Vapi assistant. Creating
      an inline/transient assistant from the browser can be rejected by
      Vapi account/security policy before a call exists, which surfaces
-     as POST /call/web 403. Saved-assistant calls intentionally send no
-     browser overrides; timing/transcriber/context settings should live
-     on the Vapi dashboard assistant or be injected after call-start when
-     the SDK supports addMessage().
+     as POST /call/web 403. Saved-assistant calls use a minimal,
+     Vapi-validated override only when questionnaire context exists:
+     firstMessage, model instructions, and variableValues. Timing,
+     transcriber, voice, and denoising settings stay on the dashboard
+     assistant to avoid schema churn.
   ───────────────────────────────────────────────────────────── */
   function buildAssistantContextMessage() {
     var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
@@ -617,9 +618,87 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return "IMPORTANT — context captured from the user's questionnaire before this call. Treat these as prefilled lead details and do NOT ask for them again. Use their name naturally from the first word. If name or email is already provided here, only confirm it briefly if needed, then continue collecting the missing details and an actual strategy-call booking time. Details: " + parts.join(' | ');
   }
 
-  function startSavedAssistant() {
-    console.info('ARIA: starting saved ASSISTANT_ID without browser overrides');
-    return vapi.start(ASSISTANT_ID);
+  function getKnownEmail() {
+    var context = getStoredContext(); var q = context.questionnaire || {};
+    return bookingLead.email || q.email || context.homepageEmail || '';
+  }
+
+  function buildContextFirstMessage() {
+    var firstName = getLeadName();
+    var email = getKnownEmail();
+    if (firstName && email) return 'Hey ' + firstName + ', I have your name and email from the previous step. I have ' + (bookingLead.name || firstName) + ' and ' + email + '. Is that still correct?';
+    if (firstName) return 'Hey ' + firstName + ', I have your name from the previous step. Is that still correct?';
+    if (email) return 'Hey, I have your email from the previous step as ' + email + '. Is that still correct?';
+    return '';
+  }
+
+  function buildPrefilledAssistantOverrides(contextMsg) {
+    var context = getStoredContext(); var q = context.questionnaire || {};
+    var fullName = bookingLead.name || q.name || '';
+    var firstName = getLeadName();
+    var email = getKnownEmail();
+    var firstMessage = buildContextFirstMessage();
+    if (!contextMsg && !firstMessage) return null;
+
+    var systemPrompt = [
+      'You are ARIA, a sharp, warm AI booking specialist for Nexus Luma.',
+      'The visitor already completed the previous questionnaire step.',
+      fullName ? 'Known full name: ' + fullName + '.' : 'No name was provided in the previous step.',
+      email ? 'Known email: ' + email + '.' : 'No email was provided in the previous step.',
+      q.challenge ? 'Their challenge: ' + q.challenge + '.' : '',
+      q.aiHelp ? 'What they want AI help with: ' + q.aiHelp + '.' : '',
+      q.contactProcess ? 'Current contact process: ' + q.contactProcess + '.' : '',
+      q.systemStatus ? 'Current system status: ' + q.systemStatus + '.' : '',
+      '',
+      'Critical flow rules:',
+      '- If name is known, do not ask for their name. Confirm it once instead.',
+      '- If email is known, do not ask them to spell or provide their email. Confirm it once instead.',
+      '- If the user says the known name or email is wrong, then ask only for the corrected item and confirm it.',
+      '- After confirming known details, collect only the missing booking details: business name, city/location, and availability for the strategy call.',
+      '- Ask one question at a time. Keep replies to one or two short sentences.',
+      '- Do not restart the questionnaire. Lead the user forward to the next step.',
+      '- When name, email, business name, location, and availability are confirmed, summarize briefly and say exactly: "We are all set."',
+      '',
+      contextMsg
+    ].filter(Boolean).join('\n');
+
+    var variableValues = {
+      name: fullName,
+      firstName: firstName,
+      email: email,
+      questionnaireContext: contextMsg,
+      challenge: q.challenge || '',
+      aiHelp: q.aiHelp || '',
+      contactProcess: q.contactProcess || '',
+      systemStatus: q.systemStatus || ''
+    };
+    Object.keys(variableValues).forEach(function(key) { if (!variableValues[key]) delete variableValues[key]; });
+
+    var overrides = {
+      model: {
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: systemPrompt }]
+      },
+      variableValues: variableValues
+    };
+    if (firstMessage) overrides.firstMessage = firstMessage;
+    return overrides;
+  }
+
+  function startSavedAssistant(overrides) {
+    if (!overrides) {
+      console.info('ARIA: starting saved ASSISTANT_ID without browser overrides');
+      return vapi.start(ASSISTANT_ID);
+    }
+    console.info('ARIA: starting saved ASSISTANT_ID with prefilled questionnaire context');
+    return vapi.start(ASSISTANT_ID, overrides).catch(function(error) {
+      if (getHttpStatus(error) === 400) {
+        console.warn('ARIA: prefilled context override rejected; retrying saved ASSISTANT_ID without overrides.', error);
+        return vapi.start(ASSISTANT_ID);
+      }
+      throw error;
+    });
   }
 
   function injectAssistantContextIfSupported() {
@@ -688,7 +767,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var useInline = FORCE_INLINE_ASSISTANT || !ASSISTANT_ID;
 
       if (ASSISTANT_ID && !useInline) {
-        return startSavedAssistant();
+        return startSavedAssistant(buildPrefilledAssistantOverrides(contextMsg));
 
       } else {
         /* Inline assistant remains available only as an explicit fallback. */
