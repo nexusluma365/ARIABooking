@@ -281,7 +281,8 @@
     'https://esm.sh/@vapi-ai/web@2?bundle',
     'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm'
   ];
-  var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyF0gyH4M9KMULQHjNMzWbX9kqimKKLlU3ZUdGwBmPkHdUKvvpc6nE15UvEVy7ecrU7rw/exec';
+  // ← ONLY CHANGE IN HTML: updated webhook URL
+  var ARIA_SHEETS_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw5Auv23psDY3Y4W2M8xHBWbtwe6SwttXlXQwoqUdSBFsO-zvos1JKjgKTvwqJ_WiXkTQ/exec';
 
   /* ─────────────────────────────────────────────────────────────
      TRANSCRIBER CONFIG
@@ -311,11 +312,6 @@
     backoffSeconds: 0.8
   };
 
-  /* ─────────────────────────────────────────────────────────────
-     ASSISTANT_OVERRIDES
-     FIX 8: Added backgroundSpeechDenoisingPlan (was missing from
-     ASSISTANT_ID path; present only in inline config previously).
-  ───────────────────────────────────────────────────────────── */
   var ASSISTANT_OVERRIDES = {
     transcriber:       TRANSCRIBER_CONFIG,
     startSpeakingPlan: SPEAKING_PLAN_CONFIG,
@@ -387,12 +383,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     firstMessage: "Hey, I'm ARIA. Nice to meet you — what's your name?"
   };
 
-  /* ═══════════════════════════════════════════════════════════════
-     LEAD STATE
-     FIX 1: Removed dead variable `assistantContextSent` — it was
-     declared and set to false but never read or set to true anywhere
-     in the codebase. Eliminated to prevent future confusion.
-  ═══════════════════════════════════════════════════════════════ */
   var bookingLead = {
     sessionId: generateUUID(), name: '', businessName: '', location: '', email: '',
     phone: '', appointmentTime: '', availability: '', service: '', pain: '', spend: '',
@@ -406,13 +396,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
   var lastTranscriptKey = '', lastUserTranscriptAt = 0;
   var callEndHandled = false;
   var redirectStarted = false;
-  /* Tracks consecutive recoverable errors mid-call; if > threshold,
-     we assume the call is silently dead and do a clean teardown.    */
   var recoverableErrorCount = 0;
   var MAX_RECOVERABLE_ERRORS = 5;
-
-  /* FIX 9: Track the last conversation-update key separately so it
-     never pre-empts the UI bubble from the real transcript final event. */
   var lastConvUpdateKey = '';
 
   var COMPLETION_PHRASE_REGEX  = /\b(?:we(?:'re| are) all set|we will talk to you soon|we'll talk to you soon|talk to you soon)\b/i;
@@ -620,18 +605,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     };
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     Previous-step context helpers.
-
-     Production calls should prefer the saved Vapi assistant. Creating
-     an inline/transient assistant from the browser can be rejected by
-     Vapi account/security policy before a call exists, which surfaces
-     as POST /call/web 403. Saved-assistant calls use a minimal,
-     Vapi-validated override only when questionnaire context exists:
-     firstMessage, model instructions, and variableValues. Timing,
-     transcriber, voice, and denoising settings stay on the dashboard
-     assistant to avoid schema churn.
-  ───────────────────────────────────────────────────────────── */
   function buildAssistantContextMessage() {
     var context = getStoredContext(); var q = context.questionnaire || {}; var parts = [];
     var dateContext = getTodayContext();
@@ -830,14 +803,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     ensureVapiInstance().then(function() {
       var contextMsg = buildAssistantContextMessage();
       var knownName  = getLeadName();
-
       var useInline = FORCE_INLINE_ASSISTANT || !ASSISTANT_ID;
-
       if (ASSISTANT_ID && !useInline) {
         return startSavedAssistant(buildPrefilledAssistantOverrides(contextMsg) || addLowLatencyOverrides());
-
       } else {
-        /* Inline assistant remains available only as an explicit fallback. */
         var inline = deepClone(INLINE_ASSISTANT);
         if (contextMsg) {
           inline.model.messages.push({ role: 'system', content: contextMsg });
@@ -849,7 +818,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         return vapi.start(inline);
       }
     }).then(function(_callResult) {
-      /* vapi.start() returning null/undefined is normal — call-start event is the real signal */
     }).catch(function(error) {
       clearTimeout(connectingTimer);
       console.error('ARIA: Vapi start failed:', error);
@@ -857,12 +825,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (vapi) { try { vapi.stop(); } catch(_) {} }
       vapi = null;
       setState('');
-
       var status = getHttpStatus(error);
-
       if (status === 403) {
-        /* 403 is always a Vapi auth/config issue — never a transient error.
-           Show an actionable checklist instead of a generic message.        */
         setHintMessage('API key rejected (403) \u2014 check Vapi dashboard');
         console.error(
           'ARIA 403 CHECKLIST:\n' +
@@ -905,9 +869,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (vapi) { try { vapi.stop(); } catch(e) { console.warn('vapi.stop() error:', e); } }
   }
 
-  /* ═══════════════════════════════════════════════════════════════
-     VAPI EVENT BINDINGS
-  ═══════════════════════════════════════════════════════════════ */
   function bindVapiEvents() {
 
     vapi.on('call-start', function() {
@@ -923,17 +884,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       syncToSheets('call-start');
     });
 
-    /* ─────────────────────────────────────────────────────────
-       FIX 6: call-end double goToNextStep() guard
-       ─────────────────────────────────────────────────────────
-       BEFORE: call-end always called goToNextStep() when finishing=true.
-       scheduleCompletionRedirect() also called goToNextStep() after
-       vapi.stop() triggered this same call-end handler → double fire.
-
-       AFTER: Only call goToNextStep() here if redirect hasn't already
-       been scheduled. scheduleCompletionRedirect() owns the redirect
-       when it fires; call-end is a fallback for unexpected teardowns.
-    ───────────────────────────────────────────────────────── */
     vapi.on('call-end', function() {
       if (callEndHandled) return;
       callEndHandled = true;
@@ -979,15 +929,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
           var finalText = extractMessageText(message);
           if (role === 'user') lastUserTranscriptAt = Date.now();
           if (finalText) {
-            /* ─────────────────────────────────────────────────
-               FIX 4: Dedup UI bubble BEFORE adding it.
-               BEFORE: bubble added unconditionally, then
-               handleFinalTranscript set the key. If an assistant/bot
-               message event OR a conversation-update pre-empted this
-               transcript-final event, the same text got two bubbles.
-               AFTER: compute the key first; skip bubble if already
-               rendered by another event path.
-            ───────────────────────────────────────────────── */
             var preKey = role + '|' + finalText;
             if (preKey !== lastTranscriptKey) {
               finalizePartialTranscript();
@@ -1009,12 +950,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         }
       }
 
-      /* ─────────────────────────────────────────────────────────
-         FIX 4 (continued): assistant/bot type bubble dedup
-         BEFORE: bubble added unconditionally before lastTranscriptKey
-         was set, so transcript-final for same text also added a bubble.
-         AFTER: check key first — add bubble only if not yet rendered.
-      ───────────────────────────────────────────────────────── */
       if (msgType === 'assistant' || msgType === 'bot') {
         removeThinking();
         var botText = extractMessageText(message);
@@ -1031,42 +966,13 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (msgType === 'conversation-update') { handleConversationUpdate(message); }
     });
 
-    /* ─────────────────────────────────────────────────────────────────
-       ERROR HANDLER — hardened against empty/null Vapi error objects
-       ─────────────────────────────────────────────────────────────────
-       Root cause of "ARIA: Vapi error received: Object {}":
-         Vapi/Daily.co emits error events with no fields for several
-         benign internal lifecycle events: ICE renegotiation, Daily
-         participant-left forwarding, audio track blips, and SDK
-         event-serialisation mismatches. getErrorText({}) returns ''
-         so isMeetingEndedError and isFatalVapiError both return false.
-
-       Fixed paths:
-         0) callEndHandled guard — drop late-arriving buffered errors
-            that arrive after a clean teardown.
-         1) Empty error during STARTUP → 2 s grace period; if call-start
-            fires in that window, the timer clears harmlessly. Prevents
-            a benign startup flicker from destroying the session.
-         2) Empty error during ACTIVE CALL → increment counter; after
-            MAX_RECOVERABLE_ERRORS consecutive hits, assume dead call
-            and tear down cleanly with a friendly re-tap message.
-         3) isMeetingEndedError → clean teardown (unchanged).
-         4) isFatalVapiError + non-empty → hard teardown (unchanged).
-         5) Other non-fatal non-empty → recoverable (unchanged).
-         6) vapi=null ONLY on confirmed fatal/dead-call paths.
-    ─────────────────────────────────────────────────────────────── */
     vapi.on('error', function(error) {
-
-      /* 0 — Drop errors that arrive after the call is already done */
       if (callEndHandled) {
         console.info('ARIA: post-teardown error ignored (call already ended).');
         return;
       }
-
       clearTimeout(connectingTimer);
       clearTimeout(micWatchdogTimer);
-
-      /* Diagnostic snapshot — serialize what we can for debugging */
       try {
         console.warn('ARIA: Vapi error received:', {
           type: error && error.type,
@@ -1081,19 +987,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       } catch(_) {
         console.warn('ARIA: Vapi error received (unserializable object)');
       }
-
-      /* 3 — Meeting-ended teardown (highest priority, checked first) */
       if (isMeetingEndedError(error)) {
         handleMeetingEndedFromError(error);
         return;
       }
-
-      /* 1 — Empty/unknown error DURING STARTUP (before call-start fired) */
       if (isEmptyError(error) && starting && !active) {
         console.info('ARIA: Empty error during startup — 2 s grace period before failing.');
         clearTimeout(startupErrorTimer);
         startupErrorTimer = setTimeout(function() {
-          /* If call-start has fired by now, active=true — bail out cleanly */
           if (active || callEndHandled) return;
           console.warn('ARIA: Grace period expired with no call-start — startup failed.');
           starting = false;
@@ -1105,19 +1006,15 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         }, 2000);
         return;
       }
-
-      /* 2 — Empty/unknown error DURING ACTIVE CALL */
       if (isEmptyError(error) && active) {
         recoverableErrorCount++;
         if (recoverableErrorCount <= MAX_RECOVERABLE_ERRORS) {
           console.info('ARIA: Benign empty error #' + recoverableErrorCount + '/' + MAX_RECOVERABLE_ERRORS + ' — keeping call alive.');
           scheduleMicWatchdog();
           setState('listening');
-          /* No visible hint change — avoid alarming the visitor for internal blips */
           syncToSheets('call-error-benign');
           return;
         }
-        /* Too many in a row — call is silently dead */
         console.warn('ARIA: ' + MAX_RECOVERABLE_ERRORS + ' consecutive empty errors — assuming dead call.');
         callEndHandled = true;
         active = false; starting = false;
@@ -1129,8 +1026,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         vapi = null;
         return;
       }
-
-      /* 5 — Non-empty recoverable error during active call */
       if (active && !isFatalVapiError(error)) {
         recoverableErrorCount++;
         scheduleMicWatchdog();
@@ -1139,15 +1034,12 @@ START: Greet them warmly and ask their name. Nothing else yet.`
         syncToSheets('call-error');
         return;
       }
-
-      /* 4/6 — Fatal or pre-start non-empty error — full teardown */
       var wasActive = active;
       var wasStarting = starting;
       callEndHandled = true;
       active = false; starting = false;
       removeThinking();
       setState('');
-
       var httpStatus = getHttpStatus(error);
       var errorText = getErrorText(error);
       if (httpStatus === 403) {
@@ -1164,7 +1056,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       } else {
         setHintMessage('Something went wrong \u2014 tap the orb to try again');
       }
-
       if (wasActive) {
         syncToSheets('call-error');
       } else {
@@ -1174,10 +1065,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     });
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     ensureMicUnmuted — only calls vapi.setMuted(false), the one
-     guaranteed Vapi web SDK method. No boost, no silent crash.
-  ───────────────────────────────────────────────────────────── */
   function ensureMicUnmuted(reason) {
     if (!vapi || !active) return;
     try {
@@ -1201,15 +1088,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }, 14000);
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     getErrorText — extract all meaningful text from any error shape.
-     ─────────────────────────────────────────────────────────────
-     Covers: plain string, Error instances (non-enumerable .message),
-     Vapi/Daily SDK objects, nested error wrappers, and the common
-     `errorMsg` field used by some Vapi SDK versions.
-     Filters bare `{}` from collected strings so it doesn't fool
-     isEmptyError into thinking there's meaningful content.
-  ───────────────────────────────────────────────────────────── */
   function getErrorText(error) {
     if (!error) return '';
     if (typeof error === 'string') return error;
@@ -1220,17 +1098,14 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       if (typeof obj === 'string')  { collected.push(obj); return; }
       if (typeof obj === 'number' || typeof obj === 'boolean') { collected.push(String(obj)); return; }
       if (typeof obj !== 'object') return;
-      /* errorMsg added — used by some Vapi SDK versions */
       var fields = ['message','msg','name','type','stage','reason','code','status','description','detail','error','cause','errorMsg'];
       for (var i=0; i<fields.length; i++) { if (obj[fields[i]] != null) walk(obj[fields[i]], depth+1); }
       try {
         var json = JSON.stringify(obj);
-        /* Filter bare empty-object strings — they carry no signal */
         if (json && json !== '{}' && json !== '[]') collected.push(json);
       } catch(_) {}
     }
     walk(error, 0);
-    /* Capture non-enumerable Error prototype properties */
     if (error && typeof error.message === 'string' && error.message) collected.push(error.message);
     if (error && typeof error.name === 'string' && error.name && error.name !== 'Object' && error.name !== 'Error') {
       collected.push(error.name);
@@ -1238,11 +1113,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return collected.filter(Boolean).join(' ').trim();
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     isEmptyError — true when getErrorText yields nothing meaningful.
-     Handles {}, null, undefined, and objects whose only serialised
-     form is '{}' (Daily.co internal lifecycle events fall here).
-  ───────────────────────────────────────────────────────────── */
   function isEmptyError(error) {
     return !error || getErrorText(error).replace(/[\s{}"\[\]]+/g, '').length === 0;
   }
@@ -1252,9 +1122,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return /meeting.*ended|ended.*meeting|ejection|ejected|left.?meeting|call.*ended|ended.*call|has[\s-]ended|disconnected|removed.*meeting|kicked/i.test(text);
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     FIX 6 (continued): handleMeetingEndedFromError goToNextStep guard
-  ───────────────────────────────────────────────────────────── */
   function handleMeetingEndedFromError(error) {
     console.info('ARIA: meeting-ended via error event; clean teardown.', error);
     if (callEndHandled) return;
@@ -1275,11 +1142,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return /start|join|reconnect|web-call/i.test(type+' '+stage);
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     getHttpStatus — extract HTTP status code from any error shape.
-     Covers: axios response wrapper, fetch Response, Vapi custom
-     fields (statusCode), and parsing it from message strings.
-  ───────────────────────────────────────────────────────────── */
   function getHttpStatus(error) {
     var found = null, seen = [];
     function walk(obj, depth) {
@@ -1312,12 +1174,10 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (transcriptKey === lastTranscriptKey) return;
     lastTranscriptKey = transcriptKey;
     bookingLead.rawTranscript.push({ at: new Date().toISOString(), role: role, text: text });
-
     if (role === 'assistant' && isCompletionPhrase(text)) {
       finishConversationAndAdvance();
       return;
     }
-
     setTimeout(function() {
       detectLeadFields(text, role);
       scheduleSheetSync('transcript-update');
@@ -1329,18 +1189,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return TAKE_CARE_CLOSEOUT_REGEX.test(text) && !/\btake care\s+of\b/i.test(text);
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     FIX 9: handleConversationUpdate — data sync only, no UI bubbles
-     ─────────────────────────────────────────────────────────────
-     BEFORE: Called handleFinalTranscript() which could set
-     lastTranscriptKey before the real transcript-final event fired.
-     This caused the actual transcript-final to skip its bubble-add
-     (the key already matched), leaving ARIA silent in the UI.
-
-     AFTER: conversation-update has its own key (lastConvUpdateKey)
-     and only runs lead detection + sheet sync — it never touches
-     lastTranscriptKey so it can never block transcript-final's UI.
-  ───────────────────────────────────────────────────────────── */
   function handleConversationUpdate(message) {
     var messages = Array.isArray(message.messages) ? message.messages
       : Array.isArray(message.conversation) ? message.conversation : [];
@@ -1355,10 +1203,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var text = extractMessageText(lastAssistant);
     if (!text) return;
     var convKey = 'assistant|' + text;
-    /* Only process if this text hasn't been handled by a prior conv-update */
     if (convKey === lastConvUpdateKey) return;
     lastConvUpdateKey = convKey;
-    /* Data sync only — never touch lastTranscriptKey or add UI bubbles */
     if (isCompletionPhrase(text) && !finishing) {
       finishConversationAndAdvance();
       return;
@@ -1432,15 +1278,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     var emailFound = extractSpokenEmail(text); if (emailFound) bookingLead.email = emailFound;
     var phone = text.match(/(?:\+?1[\s\-.]?)?\(?\d{3}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
     if (phone && !bookingLead.phone) bookingLead.phone = phone[0].trim();
-
-    /* ─────────────────────────────────────────────────────────
-       FIX 3: Name detection — handle lowercase ASR output
-       ─────────────────────────────────────────────────────────
-       BEFORE: bareName required /^([A-Z][a-z]+...)/ — capitalized.
-       Deepgram ASR commonly returns "john smith" (lowercase) for short
-       single-word responses, so names were never captured.
-       AFTER: case-insensitive match, result is title-cased for storage.
-    ───────────────────────────────────────────────────────── */
     var nameWithPrefix = text.match(/(?:my name is|i am|i'm|i go by|this is|it'?s|call me|actually it'?s|it is|no[,]? it'?s|no[,]? it is)\s+([A-Za-z][a-z]*(?: [A-Za-z][a-z]*){0,3})/i);
     if (nameWithPrefix) {
       bookingLead.name = cleanValue(toTitleCase(nameWithPrefix[1]));
@@ -1448,7 +1285,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
       var bareName = /^([A-Za-z][a-z]*(?: [A-Za-z][a-z]*){0,2})[.,!?]?\s*$/i.exec(text);
       if (bareName && text.length < 40) bookingLead.name = cleanValue(toTitleCase(bareName[1]));
     }
-
     if (!bookingLead.businessName) { var biz=text.match(/(?:business(?:\s+name)? is|company(?:\s+name)? is|my business is|my company is|we are called|it'?s called|we go by|called)\s+([^,.!?]{2,70})/i); if (biz) bookingLead.businessName=cleanValue(biz[1]); }
     if (!bookingLead.location) { var loc=text.match(/(?:located in|location is|we are in|i'?m in|i am in|based in|out of|from)\s+([^,.!?]{2,60})/i); if (loc) bookingLead.location=cleanValue(loc[1]); }
     if (!bookingLead.appointmentTime) { var appointmentTime = extractAppointmentTime(text); if (appointmentTime) bookingLead.appointmentTime = appointmentTime; }
@@ -1460,9 +1296,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     saveLeadSnapshot();
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     FIX 3 (helper): Title-case a name string from ASR output.
-  ───────────────────────────────────────────────────────────── */
   function toTitleCase(str) {
     return str.replace(/\b([a-z])/gi, function(_, c) { return c.toUpperCase(); });
   }
@@ -1528,20 +1361,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     return t.replace(/a\.?m\.?/i, 'AM').replace(/p\.?m\.?/i, 'PM').replace(/\s+/g, ' ');
   }
 
-  /* ─────────────────────────────────────────────────────────────
-     FIX 2: cleanValue — fix over-aggressive filler-word stripping
-     ─────────────────────────────────────────────────────────────
-     BEFORE: /\b(and|but|uh|um|yeah|yes|no|so|like|okay|ok)\b.*$/i
-     The ".*$" stripped EVERYTHING from the matched word to end of string.
-     "Bread and Butter Co" → "Bread" (destroyed business names).
-     "Blue Sky and Beyond LLC" → "Blue Sky" (same issue).
-
-     AFTER: Two separate passes —
-     1. Remove mid-phrase filler-only words (uh, um) anywhere.
-     2. Strip trailing filler (and|but|yeah|yes|no|so|like|okay|ok)
-        ONLY at the very end of the string (anchored with $).
-     Words like "and" that connect nouns mid-phrase are preserved.
-  ───────────────────────────────────────────────────────────── */
   function cleanValue(value) {
     return value
       .replace(/\s*\b(?:uh|um)\b\s*/gi, ' ')
@@ -1565,15 +1384,6 @@ START: Greet them warmly and ask their name. Nothing else yet.`
 
   function goToNextStep() { window.location.href = NEXT_STEP_URL; }
 
-  /* ─────────────────────────────────────────────────────────────
-     FIX 12: pagehide — skip duplicate sync when redirect is active
-     ─────────────────────────────────────────────────────────────
-     BEFORE: pagehide always fired syncToSheets even immediately after
-     goToNextStep() was called, causing a redundant 'pagehide' row in
-     Google Sheets on every completed booking.
-     AFTER: if redirect was already started (completion path), the
-     'completion' sync already ran — skip the pagehide duplicate.
-  ───────────────────────────────────────────────────────────── */
   window.addEventListener('pagehide', function() {
     saveLeadSnapshot();
     if (!redirectStarted) {
@@ -1581,12 +1391,8 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     }
   });
 
-  /* ─────────────────────────────────────────────────────────────
-     INIT
-  ───────────────────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function() {
     requestAnimationFrame(function() { requestAnimationFrame(function() { document.body.classList.add('page-ready'); }); });
-    /* Pre-warm SDK — errors here are non-fatal, startCall handles retry */
     getVapiConstructor().catch(function(error) { console.error('ARIA WARNING: Vapi SDK preload failed:', error); });
     setStatusText('idle');
     console.info('ARIA: lead sync target is', ARIA_SHEETS_WEBHOOK_URL);
