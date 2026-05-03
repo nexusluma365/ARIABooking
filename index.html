@@ -15,8 +15,8 @@
     --text-primary: #f8fafc;
     --text-secondary: rgba(226, 232, 240, 0.72);
     --text-tertiary: rgba(203, 213, 225, 0.62);
-    --accent: #38bdf8;          /* sky blue */
-    --accent-deep: #0ea5e9;     /* deeper sky blue */
+    --accent: #38bdf8;
+    --accent-deep: #0ea5e9;
     --accent-light: #bae6fd;
     --accent-soft: rgba(56, 189, 248, 0.12);
     --border: rgba(255, 255, 255, 0.10);
@@ -26,14 +26,10 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
 
   html, body {
-    background-color: #020617;
-    background:
-      radial-gradient(circle at top, #03111f 0%, #020617 42%, #01030a 100%);
+    background: radial-gradient(circle at top, #03111f 0%, #020617 42%, #01030a 100%);
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -42,9 +38,7 @@
     overflow-x: hidden;
   }
 
-  /* Ambient sky-blue light bleeds at the top corners */
-  body::before,
-  body::after {
+  body::before, body::after {
     content: "";
     position: fixed;
     top: -260px;
@@ -53,8 +47,6 @@
     background: radial-gradient(circle, rgba(56, 189, 248, 0.10) 0%, transparent 65%);
     pointer-events: none;
     z-index: 0;
-    will-change: auto;
-    contain: strict;
   }
   body::before { left: -260px; }
   body::after { right: -260px; }
@@ -70,106 +62,42 @@
     transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.22,.8,.22,1);
   }
 
-  body.page-loaded .container {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  body.page-loaded .container { opacity: 1; transform: translateY(0); }
 
   .reveal {
     opacity: 0;
     transform: translateY(28px);
-    transition:
-      opacity 0.72s ease,
-      transform 0.72s cubic-bezier(.22,.8,.22,1);
+    transition: opacity 0.72s ease, transform 0.72s cubic-bezier(.22,.8,.22,1);
     transition-delay: var(--reveal-delay, 0ms);
     will-change: opacity, transform;
   }
+  .reveal.is-visible { opacity: 1; transform: translateY(0); }
 
-  .reveal.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .hero-copy,
-  .hero-media {
+  .hero-copy, .hero-media {
     opacity: 0;
     transform: translateY(22px);
-    transition:
-      opacity 0.9s ease,
-      transform 0.9s cubic-bezier(.18,.84,.28,1);
+    transition: opacity 0.9s ease, transform 0.9s cubic-bezier(.18,.84,.28,1);
     will-change: opacity, transform;
   }
-
-  .hero-media {
-    transform: translateY(30px) scale(0.975);
-    transition-delay: 0.28s;
-  }
-
-  body.page-loaded .hero-copy,
-  body.page-loaded .hero-media {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  .hero-media { transform: translateY(30px) scale(0.975); transition-delay: 0.28s; }
+  body.page-loaded .hero-copy, body.page-loaded .hero-media { opacity: 1; transform: translateY(0) scale(1); }
 
   @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-
-    #features {
-      transform: none;
-      will-change: auto;
-    }
-
-    .container,
-    .hero-copy,
-    .hero-media,
-    .reveal {
-      opacity: 1;
-      transform: none;
-      transition: none;
-      will-change: auto;
-    }
+    html { scroll-behavior: auto; }
+    #features { transform: none; will-change: auto; }
+    .container, .hero-copy, .hero-media, .reveal { opacity: 1; transform: none; transition: none; will-change: auto; }
   }
 
-  /* ---------- NAV ---------- */
-  nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 22px 0;
-  }
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    font-size: 16px;
-    letter-spacing: -0.01em;
-    color: var(--text-primary);
-  }
-  .logo-mark {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-    display: flex; align-items: center; justify-content: center;
-    color: white;
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
-  }
+  /* NAV */
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary); }
+  .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-deep)); display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35); }
   .logo-mark svg { width: 16px; height: 16px; }
-  .nav-links {
-    display: flex; gap: 36px; list-style: none;
-  }
-  .nav-links a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    transition: color 0.2s ease;
-  }
+  .nav-links { display: flex; gap: 36px; list-style: none; }
+  .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s ease; }
   .nav-links a:hover { color: var(--text-primary); }
-  /* ---------- UNIFIED CTA BUTTON ---------- */
+
+  /* BUTTON */
   .btn {
     --border-color: linear-gradient(-45deg, #0284c7, #38bdf8, #bae6fd);
     --border-width: 0.125em;
@@ -191,1135 +119,178 @@
     border: 0;
     background: transparent;
     box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.6);
-    clip-path: polygon(
-      0% var(--curve-size),
-      var(--curve-size) 0,
-      100% 0,
-      100% calc(100% - var(--curve-size)),
-      calc(100% - var(--curve-size)) 100%,
-      0 100%
-    );
+    clip-path: polygon(0% var(--curve-size), var(--curve-size) 0, 100% 0, 100% calc(100% - var(--curve-size)), calc(100% - var(--curve-size)) 100%, 0 100%);
     transition: color 250ms;
     white-space: nowrap;
   }
-  .btn::after,
-  .btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-  }
-  .btn::before {
-    background: var(--border-color);
-    background-size: 300% 300%;
-    animation: move-bg7234 5s ease infinite;
-    z-index: -2;
-  }
-  @keyframes move-bg7234 {
-    0%   { background-position: 31% 0%; }
-    50%  { background-position: 70% 100%; }
-    100% { background-position: 31% 0%; }
-  }
+  .btn::after, .btn::before { content: ""; position: absolute; inset: 0; }
+  .btn::before { background: var(--border-color); background-size: 300% 300%; animation: move-bg7234 5s ease infinite; z-index: -2; }
+  @keyframes move-bg7234 { 0% { background-position: 31% 0%; } 50% { background-position: 70% 100%; } 100% { background-position: 31% 0%; } }
   .btn::after {
     background: var(--bg);
     z-index: -1;
-    clip-path: polygon(
-      var(--border-width) calc(var(--curve-size) + var(--border-width) * 0.5),
-      calc(var(--curve-size) + var(--border-width) * 0.5) var(--border-width),
-      calc(100% - var(--border-width)) var(--border-width),
-      calc(100% - var(--border-width)) calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)),
-      calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)) calc(100% - var(--border-width)),
-      var(--border-width) calc(100% - var(--border-width))
-    );
+    clip-path: polygon(var(--border-width) calc(var(--curve-size) + var(--border-width) * 0.5), calc(var(--curve-size) + var(--border-width) * 0.5) var(--border-width), calc(100% - var(--border-width)) var(--border-width), calc(100% - var(--border-width)) calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)), calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)) calc(100% - var(--border-width)), var(--border-width) calc(100% - var(--border-width)));
     transition: clip-path 500ms;
   }
   .btn:where(:hover, :focus)::after {
-    clip-path: polygon(
-      calc(100% - var(--border-width)) calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)),
-      calc(100% - var(--border-width)) var(--border-width),
-      calc(100% - var(--border-width)) var(--border-width),
-      calc(100% - var(--border-width)) calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)),
-      calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)) calc(100% - var(--border-width)),
-      calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)) calc(100% - var(--border-width))
-    );
+    clip-path: polygon(calc(100% - var(--border-width)) calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)), calc(100% - var(--border-width)) var(--border-width), calc(100% - var(--border-width)) var(--border-width), calc(100% - var(--border-width)) calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)), calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)) calc(100% - var(--border-width)), calc(100% - calc(var(--curve-size) + var(--border-width) * 0.5)) calc(100% - var(--border-width)));
     transition: 200ms;
   }
-  .btn:where(:hover, :focus) {
-    color: #fff;
-  }
-  /* Smaller variant for nav */
-  .btn--sm {
-    font-size: 12px;
-    padding: 0.45em 1.1em;
-  }
-  /* XL hero CTA */
-  .btn--xl {
-    --curve-size: 0.9em;
-    font-size: clamp(22px, 3vw, 32px);
-    padding: 0.7em 2.6em;
-    letter-spacing: 0.07em;
-    box-shadow: 0 0 60px rgba(56, 189, 248, 0.18), 10px 10px 30px rgba(0,0,0,0.7);
-  }
+  .btn:where(:hover, :focus) { color: #fff; }
+  .btn--sm { font-size: 12px; padding: 0.45em 1.1em; }
+  .btn--xl { --curve-size: 0.9em; font-size: clamp(22px, 3vw, 32px); padding: 0.7em 2.6em; letter-spacing: 0.07em; box-shadow: 0 0 60px rgba(56, 189, 248, 0.18), 10px 10px 30px rgba(0,0,0,0.7); }
 
-  /* ---------- FREE CTA BAND ---------- */
-  .free-cta-band {
-    position: relative;
-    z-index: 4;
-    text-align: center;
-    padding: 72px 24px 80px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-  }
-  .free-cta-band::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse 70% 80% at 50% 50%, rgba(56, 189, 248, 0.07) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  .free-cta-eyebrow {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    opacity: 0.8;
-  }
+  @media (max-width: 760px) { .nav-links { display: none; } }
 
-  @media (max-width: 760px) {
-    .nav-links { display: none; }
-  }
-
-  /* ---------- HERO ---------- */
-  .hero {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-bottom: -150px;
-    min-height: calc(100svh - 72px);
-    padding: 118px 0 136px;
-    position: relative;
-    overflow: hidden;
-    border-radius: 0;
-    isolation: isolate;
-    z-index: 3;
-    box-shadow:
-      0 44px 90px rgba(2, 6, 23, 0.56),
-      0 90px 130px rgba(7, 89, 133, 0.24);
-  }
-  .hero::before,
-  .hero::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: -1;
-  }
-  .hero::before {
-    background: url("background2.webp") center right / cover no-repeat;
-  }
-  .hero::after {
-    background:
-      linear-gradient(90deg,
-        rgba(3, 12, 32, 0.92) 0%,
-        rgba(7, 89, 133, 0.78) 38%,
-        rgba(14, 165, 233, 0.5) 68%,
-        rgba(8, 47, 73, 0.42) 100%);
-  }
-  .hero-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 0.78fr) minmax(540px, 1.22fr);
-    align-items: center;
-    gap: 54px;
-    max-width: 1180px;
-    min-height: calc(100svh - 326px);
-    margin: 0 auto;
-    padding: 0 24px;
-    position: relative;
-    z-index: 2;
-  }
-  .hero-copy {
-    min-width: 0;
-    position: relative;
-    z-index: 3;
-  }
-  .hero-media {
-    min-height: 520px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    width: 100%;
-    position: relative;
-    z-index: 4;
-  }
-  .video-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 28px;
-    width: min(100%, 760px);
-    margin-left: auto;
-  }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--accent-soft);
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    color: var(--accent-deep);
-    padding: 7px 14px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 32px;
-  }
-  .badge-dot {
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.2);
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-  .hero h1 {
-    font-size: clamp(42px, 5.2vw, 68px);
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1.02;
-    color: white;
-    max-width: 620px;
-    margin: 0;
-  }
-  .hero h1 .accent-text {
-    background: linear-gradient(135deg, var(--accent-deep), var(--accent));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .hero p {
-    max-width: 540px;
-    margin: 28px 0 0;
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.82);
-    line-height: 1.6;
-    letter-spacing: -0.005em;
-  }
-  .hero-microcopy {
-    margin-top: 14px !important;
-    font-size: 13px !important;
-    color: rgba(255, 255, 255, 0.72) !important;
-    letter-spacing: 0.01em;
-  }
-  .hero-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 28px;
-    margin-top: 36px;
-    flex-wrap: wrap;
-  }
-  .social-proof {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+  /* HERO */
+  .hero { width: 100vw; margin-left: calc(50% - 50vw); margin-bottom: -150px; min-height: calc(100svh - 72px); padding: 118px 0 136px; position: relative; overflow: hidden; border-radius: 0; isolation: isolate; z-index: 3; box-shadow: 0 44px 90px rgba(2, 6, 23, 0.56), 0 90px 130px rgba(7, 89, 133, 0.24); }
+  .hero::before, .hero::after { content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: -1; }
+  .hero::before { background: url("background2.webp") center right / cover no-repeat; }
+  .hero::after { background: linear-gradient(90deg, rgba(3, 12, 32, 0.92) 0%, rgba(7, 89, 133, 0.78) 38%, rgba(14, 165, 233, 0.5) 68%, rgba(8, 47, 73, 0.42) 100%); }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 0.78fr) minmax(540px, 1.22fr); align-items: center; gap: 54px; max-width: 1180px; min-height: calc(100svh - 326px); margin: 0 auto; padding: 0 24px; position: relative; z-index: 2; }
+  .hero-copy { min-width: 0; position: relative; z-index: 3; }
+  .hero-media { min-height: 520px; display: flex; align-items: center; justify-content: flex-end; width: 100%; position: relative; z-index: 4; }
+  .video-col { display: flex; flex-direction: column; align-items: center; gap: 28px; width: min(100%, 760px); margin-left: auto; }
+  .badge { display: inline-flex; align-items: center; gap: 8px; background: var(--accent-soft); border: 1px solid rgba(56, 189, 248, 0.25); color: var(--accent-deep); padding: 7px 14px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 32px; }
+  .badge-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.2); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .hero h1 { font-size: clamp(42px, 5.2vw, 68px); font-weight: 700; letter-spacing: -0.04em; line-height: 1.02; color: white; max-width: 620px; margin: 0; }
+  .hero h1 .accent-text { background: linear-gradient(135deg, var(--accent-deep), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { max-width: 540px; margin: 28px 0 0; font-size: 16px; color: rgba(255, 255, 255, 0.82); line-height: 1.6; letter-spacing: -0.005em; }
+  .hero-microcopy { margin-top: 14px !important; font-size: 13px !important; color: rgba(255, 255, 255, 0.72) !important; letter-spacing: 0.01em; }
+  .hero-actions { display: flex; align-items: center; justify-content: flex-start; gap: 28px; margin-top: 36px; flex-wrap: wrap; }
+  .social-proof { display: flex; align-items: center; gap: 12px; }
   .avatars { display: flex; }
-  .avatar {
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    border: 2px solid white;
-    margin-left: -10px;
-    background-size: cover;
-    background-position: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; border: 2px solid white; margin-left: -10px; background-size: cover; background-position: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); }
   .avatar:first-child { margin-left: 0; }
   .avatar.a1 { background: linear-gradient(135deg, #7dd3fc, #0ea5e9); }
   .avatar.a2 { background: linear-gradient(135deg, #fdba74, #f97316); }
   .avatar.a3 { background: linear-gradient(135deg, #c4b5fd, #7c3aed); }
-  .avatar.a4 {
-    background: var(--accent);
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .reviews-text {
-    text-align: left;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.76);
-    line-height: 1.4;
-  }
-  .stars {
-    color: transparent;
-    letter-spacing: 2px;
-    font-size: 13px;
-    display: block;
-    margin-bottom: 2px;
-    width: max-content;
-    background: linear-gradient(90deg, #fbbf24 0 90%, rgba(255, 255, 255, 0.32) 90% 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
+  .avatar.a4 { background: var(--accent); color: white; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .reviews-text { text-align: left; font-size: 12px; color: rgba(255, 255, 255, 0.76); line-height: 1.4; }
+  .stars { color: transparent; letter-spacing: 2px; font-size: 13px; display: block; margin-bottom: 2px; width: max-content; background: linear-gradient(90deg, #fbbf24 0 90%, rgba(255, 255, 255, 0.32) 90% 100%); -webkit-background-clip: text; background-clip: text; }
 
-  /* ---------- VIDEO ---------- */
+  /* VIDEO */
   .hero-media { min-width: 0; }
-  .video-label {
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 14px;
-    letter-spacing: -0.005em;
-    text-align: center;
-  }
+  .video-label { color: rgba(255, 255, 255, 0.72); font-size: 13px; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.005em; text-align: center; }
   .video-label .arrow { display: inline-block; margin-left: 4px; transform: translateY(2px); }
-  .video-stage {
-    position: relative;
-    width: 100%;
-    max-width: 760px;
-    margin: 0;
-    padding: 34px;
-    transform: translateY(-8px);
-    filter: drop-shadow(0 34px 46px rgba(2, 132, 199, 0.32));
-    z-index: 5;
-  }
-  /* The blue glow halo behind the player */
-  .video-stage::before {
-    content: "";
-    position: absolute;
-    inset: -18px;
-    border-radius: 42px;
-    background:
-      radial-gradient(ellipse at center,
-        rgba(56, 189, 248, 0.72) 0%,
-        rgba(14, 165, 233, 0.42) 38%,
-        rgba(14, 165, 233, 0.14) 66%,
-        transparent 78%);
-    filter: blur(30px);
-    z-index: 0;
-    animation: glowBreath 4s ease-in-out infinite;
-  }
-  .video-stage::after {
-    content: "";
-    position: absolute;
-    inset: 22px;
-    border-radius: 22px;
-    border: 1px solid rgba(186, 230, 253, 0.58);
-    box-shadow:
-      0 0 34px rgba(56, 189, 248, 0.62),
-      0 0 82px rgba(14, 165, 233, 0.42);
-    pointer-events: none;
-    z-index: 2;
-  }
-  @keyframes glowBreath {
-    0%, 100% { opacity: 0.85; }
-    50% { opacity: 1; }
-  }
-  .video-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: 16px;
-    overflow: hidden;
-    background: #0a0f1a;
-    z-index: 1;
-    cursor: pointer;
-    box-shadow:
-      0 0 0 1px rgba(186, 230, 253, 0.5),
-      0 0 38px rgba(56, 189, 248, 0.52),
-      0 24px 64px rgba(14, 165, 233, 0.34),
-      0 36px 88px rgba(2, 6, 23, 0.52);
-  }
-  .aria-video {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    background: #0a0f1a;
-  }
-  .video-audio-toggle {
-    position: absolute;
-    top: 14px; right: 14px;
-    min-width: 38px;
-    height: 38px;
-    padding: 0 11px;
-    background: rgba(0, 0, 0, 0.56);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex; align-items: center; justify-content: center;
-    gap: 7px;
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0;
-    pointer-events: none;
-    z-index: 3;
-  }
+  .video-stage { position: relative; width: 100%; max-width: 760px; margin: 0; padding: 34px; transform: translateY(-8px); filter: drop-shadow(0 34px 46px rgba(2, 132, 199, 0.32)); z-index: 5; }
+  .video-stage::before { content: ""; position: absolute; inset: -18px; border-radius: 42px; background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.72) 0%, rgba(14, 165, 233, 0.42) 38%, rgba(14, 165, 233, 0.14) 66%, transparent 78%); filter: blur(30px); z-index: 0; animation: glowBreath 4s ease-in-out infinite; }
+  .video-stage::after { content: ""; position: absolute; inset: 22px; border-radius: 22px; border: 1px solid rgba(186, 230, 253, 0.58); box-shadow: 0 0 34px rgba(56, 189, 248, 0.62), 0 0 82px rgba(14, 165, 233, 0.42); pointer-events: none; z-index: 2; }
+  @keyframes glowBreath { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+  .video-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #0a0f1a; z-index: 1; cursor: pointer; box-shadow: 0 0 0 1px rgba(186, 230, 253, 0.5), 0 0 38px rgba(56, 189, 248, 0.52), 0 24px 64px rgba(14, 165, 233, 0.34), 0 36px 88px rgba(2, 6, 23, 0.52); }
+  .aria-video { display: block; width: 100%; height: 100%; object-fit: cover; background: #0a0f1a; }
+  .video-audio-toggle { position: absolute; top: 14px; right: 14px; min-width: 38px; height: 38px; padding: 0 11px; background: rgba(0, 0, 0, 0.56); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; gap: 7px; color: white; font-size: 11px; font-weight: 700; letter-spacing: 0; pointer-events: none; z-index: 3; }
   .video-audio-toggle svg { width: 15px; height: 15px; flex: 0 0 auto; }
   .video-audio-toggle .audio-on { display: none; }
   .video-wrap.audio-on .video-audio-toggle .audio-on { display: inline; }
   .video-wrap.audio-on .video-audio-toggle .audio-off { display: none; }
 
   @media (max-width: 980px) {
-    .hero {
-      min-height: calc(100svh - 64px);
-      padding: 72px 0 96px;
-      text-align: center;
-      margin-bottom: -82px;
-    }
-    .hero::before,
-    .hero::after {
-      left: 0;
-      width: 100%;
-    }
-    .hero::before {
-      background-position: center;
-    }
-    .hero::after {
-      background:
-        linear-gradient(180deg,
-          rgba(3, 12, 32, 0.9) 0%,
-          rgba(7, 89, 133, 0.78) 58%,
-          rgba(14, 165, 233, 0.58) 100%);
-    }
-    .hero-grid {
-      grid-template-columns: 1fr;
-      gap: 42px;
-      min-height: auto;
-    }
-    .hero h1,
-    .hero p {
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .hero-actions {
-      justify-content: center;
-    }
-    .video-stage {
-      max-width: 720px;
-      margin: 0 auto;
-    }
-    .hero-media {
-      display: none;
-    }
+    .hero { min-height: calc(100svh - 64px); padding: 72px 0 96px; text-align: center; margin-bottom: -82px; }
+    .hero::before, .hero::after { left: 0; width: 100%; }
+    .hero::before { background-position: center; }
+    .hero::after { background: linear-gradient(180deg, rgba(3, 12, 32, 0.9) 0%, rgba(7, 89, 133, 0.78) 58%, rgba(14, 165, 233, 0.58) 100%); }
+    .hero-grid { grid-template-columns: 1fr; gap: 42px; min-height: auto; }
+    .hero h1, .hero p { margin-left: auto; margin-right: auto; }
+    .hero-actions { justify-content: center; }
+    .video-stage { max-width: 720px; margin: 0 auto; }
+    .hero-media { display: none; }
   }
-
   @media (max-width: 620px) {
-    .hero {
-      padding: 52px 0 72px;
-      min-height: calc(100svh - 58px);
-    }
-    .hero-grid {
-      gap: 34px;
-    }
-    .hero h1 {
-      font-size: clamp(36px, 12vw, 48px);
-      letter-spacing: -0.045em;
-    }
-    .hero p {
-      font-size: 15px;
-      max-width: 34rem;
-    }
-    .hero-actions {
-      gap: 18px;
-    }
-    .social-proof {
-      justify-content: center;
-    }
-    .video-stage {
-      padding: 14px;
-    }
+    .hero { padding: 52px 0 72px; min-height: calc(100svh - 58px); }
+    .hero-grid { gap: 34px; }
+    .hero h1 { font-size: clamp(36px, 12vw, 48px); letter-spacing: -0.045em; }
+    .hero p { font-size: 15px; max-width: 34rem; }
+    .hero-actions { gap: 18px; }
+    .social-proof { justify-content: center; }
+    .video-stage { padding: 14px; }
   }
 
-  /* ---------- BENEFITS ---------- */
-  .benefits {
-    padding: 72px 0 120px;
-    text-align: center;
-    background: transparent;
-  }
-
-  /* Keep sections fully painted to avoid delayed paint/flash artifacts on Chrome. */
-  #benefits,
-  #offer,
-  #results {
-    content-visibility: visible;
-  }
-  .section-label {
-    display: inline-block;
-    background: var(--bg-soft);
-    border: 1px solid var(--border);
-    color: rgba(226, 232, 240, 0.78);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 24px;
-  }
-  .benefits h2 {
-    font-size: clamp(32px, 4.4vw, 52px);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-    color: var(--text-primary);
-    max-width: 780px;
-    margin: 0 auto 60px;
-  }
-  .benefits-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    text-align: left;
-  }
-  @media (max-width: 880px) {
-    .benefits-grid { grid-template-columns: 1fr; }
-  }
-  .benefit-card {
-    background: rgba(255,255,255,0.045);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 20px;
-    padding: 32px 28px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-    box-shadow: var(--shadow-card);
-    position: relative;
-    overflow: hidden;
-    contain: layout style;
-  }
-  .benefit-card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .benefit-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(56, 189, 248, 0.3);
-    box-shadow: 0 12px 36px rgba(56, 189, 248, 0.15);
-  }
+  /* BENEFITS */
+  .benefits { padding: 72px 0 120px; text-align: center; background: transparent; }
+  #benefits, #offer, #results { content-visibility: auto; contain-intrinsic-size: 1px 980px; }
+  .section-label { display: inline-block; background: var(--bg-soft); border: 1px solid var(--border); color: rgba(226, 232, 240, 0.78); padding: 6px 14px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 24px; }
+  .benefits h2 { font-size: clamp(32px, 4.4vw, 52px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; color: var(--text-primary); max-width: 780px; margin: 0 auto 60px; }
+  .benefits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
+  @media (max-width: 880px) { .benefits-grid { grid-template-columns: 1fr; } }
+  .benefit-card { background: rgba(255,255,255,0.045); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.10); border-radius: 20px; padding: 32px 28px; transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; box-shadow: var(--shadow-card); position: relative; overflow: hidden; contain: layout style; }
+  .benefit-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent); opacity: 0; transition: opacity 0.3s; }
+  .benefit-card:hover { transform: translateY(-4px); border-color: rgba(56, 189, 248, 0.3); box-shadow: 0 12px 36px rgba(56, 189, 248, 0.15); }
   .benefit-card:hover::before { opacity: 1; }
-  .benefit-icon {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--accent-soft), rgba(56, 189, 248, 0.05));
-    border: 1px solid rgba(56, 189, 248, 0.18);
-    color: var(--accent-deep);
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 22px;
-  }
-  .benefit-icon svg { width: 22px; height: 22px; }
-  .benefit-card h3 {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    color: var(--text-primary);
-    margin-bottom: 10px;
-  }
-  .benefit-card p {
-    font-size: 14px;
-    color: var(--text-secondary);
-    line-height: 1.55;
+
+  #benefits .benefits-grid { gap: 24px; perspective: 1000px; }
+  #benefits .parent { width: 100%; padding: 20px; perspective: 1000px; }
+  #benefits .card { position: relative; width: 100%; min-height: 330px; padding-top: 50px; border: 0; transform-style: preserve-3d; background: transparent; box-shadow: none; transition: all 0.5s ease-in-out; }
+  #benefits .card:hover { transform: rotate3d(0.5, 1, 0, 30deg); }
+  #benefits .content-box { min-height: 280px; background: rgba(4, 193, 250, 0.73); box-shadow: 0 28px 42px -18px rgba(14, 165, 233, 0.42), 0 18px 60px rgba(2, 6, 23, 0.22); transition: all 0.5s ease-in-out; padding: 60px 25px 25px; transform-style: preserve-3d; }
+  #benefits .card-title { display: inline-block; color: white; font-size: 25px; font-weight: 900; line-height: 1.08; letter-spacing: -0.035em; transition: all 0.5s ease-in-out; transform: translate3d(0, 0, 50px); }
+  #benefits .card-title:hover { transform: translate3d(0, 0, 60px); }
+  #benefits .card-content { margin-top: 10px; font-size: 12px; font-weight: 700; line-height: 1.55; color: #f2f2f2; transition: all 0.5s ease-in-out; transform: translate3d(0, 0, 30px); }
+  #benefits .card-content:hover { transform: translate3d(0, 0, 60px); }
+  #benefits .see-more { cursor: pointer; margin-top: 1rem; display: inline-block; font-weight: 900; font-size: 9px; text-transform: uppercase; color: var(--accent-deep); background: white; padding: 0.5rem 0.7rem; transition: all 0.5s ease-in-out; transform: translate3d(0, 0, 20px); }
+  #benefits .see-more:hover { transform: translate3d(0, 0, 60px); }
+  #benefits .date-box { position: absolute; top: 30px; right: 30px; height: 60px; width: 60px; background: white; border: 1px solid var(--accent); padding: 10px; transform: translate3d(0, 0, 80px); box-shadow: rgba(14, 165, 233, 0.24) 0 17px 10px -10px; }
+  #benefits .date-box span { display: block; text-align: center; }
+  #benefits .date-box .month { color: var(--accent-deep); font-size: 9px; font-weight: 700; }
+  #benefits .date-box .date { font-size: 20px; font-weight: 900; color: var(--accent-deep); }
+  @media (max-width: 880px) { #benefits .benefits-grid { max-width: 380px; margin: 0 auto; } #benefits .parent { padding: 16px; } #benefits .card:hover { transform: translateY(-4px); } }
+
+  #features { width: 100vw; margin-left: calc(50% - 50vw); padding: 0 !important; position: relative; overflow: hidden; z-index: 0; aspect-ratio: 1672 / 941; min-height: 0; background: #020817 url("background.webp") center center / cover no-repeat; }
+  #features::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, rgba(3, 12, 32, 0.92) 0%, rgba(7, 89, 133, 0.78) 38%, rgba(14, 165, 233, 0.5) 68%, rgba(8, 47, 73, 0.42) 100%); }
+  #features .problem-hotspot { position: absolute; top: 73.4%; height: 7.9%; border-radius: 18px; z-index: 2; text-indent: -9999px; overflow: hidden; }
+  #features .problem-headline { position: absolute; left: 50%; top: 42%; width: min(980px, calc(100% - 48px)); z-index: 2; transform: translate3d(-50%, var(--problem-title-shift, 24px), 0) scale(var(--problem-title-scale, 0.98)); color: white; text-align: center; font-size: clamp(42px, 7vw, 104px); font-weight: 900; line-height: 0.98; letter-spacing: -0.06em; opacity: var(--problem-title-opacity, 0); text-shadow: 0 0 28px rgba(56, 189, 248, 0.42), 0 18px 54px rgba(2, 6, 23, 0.72); pointer-events: none; will-change: opacity, transform; backface-visibility: hidden; }
+  #features .problem-headline .accent-text { background: linear-gradient(135deg, #dbeafe 0%, var(--accent) 44%, #2563eb 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  #features .problem-hotspot.primary { left: 36.3%; width: 12.5%; }
+  #features .problem-hotspot.secondary { left: 50.5%; width: 13.1%; }
+  #features .problem-hotspot:focus-visible { outline: 3px solid rgba(186, 230, 253, 0.95); outline-offset: 4px; }
+  @media (max-width: 760px) { #features { background-size: cover; background-position: center; } #features .problem-hotspot { top: 76.6%; height: 9%; border-radius: 12px; } #features .problem-hotspot.primary { left: 34.4%; width: 14.2%; } #features .problem-hotspot.secondary { left: 50.6%; width: 14.9%; } #features .problem-headline { top: 41%; width: min(92%, 560px); font-size: clamp(34px, 11vw, 58px); } }
+
+  /* OFFER */
+  .offer-section { padding: 86px 0 110px; text-align: center; }
+  .offer-wrap { background: radial-gradient(ellipse at top, rgba(56, 189, 248, 0.14), transparent 48%), linear-gradient(180deg, rgba(2, 6, 23, 0.94) 0%, rgba(1, 3, 10, 0.98) 100%); border: 1px solid rgba(56, 189, 248, 0.18); border-radius: 30px; padding: 46px; box-shadow: 0 18px 60px rgba(14, 165, 233, 0.10), var(--shadow-card); position: relative; overflow: hidden; }
+  .offer-wrap::before { content: ""; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8), transparent); }
+  .offer-intro { max-width: 760px; margin: -34px auto 44px; color: rgba(226, 232, 240, 0.76); font-size: 16px; line-height: 1.65; }
+  .offer-wrap h2 { color: rgba(248, 250, 252, 0.98) !important; }
+  .offer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; text-align: left; margin-top: 22px; }
+  .offer-item { background: rgba(255,255,255,0.055); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.10); border-radius: 18px; padding: 22px 22px 22px 56px; position: relative; box-shadow: 0 8px 26px rgba(0,0,0,0.035); }
+  .offer-check { position: absolute; left: 20px; top: 23px; width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; box-shadow: 0 5px 12px rgba(56, 189, 248, 0.28); }
+  .offer-item h3 { font-size: 16px; font-weight: 650; letter-spacing: -0.015em; margin-bottom: 6px; color: rgba(248, 250, 252, 0.96); }
+  .offer-item p { color: rgba(203, 213, 225, 0.78); font-size: 14px; line-height: 1.55; }
+  .offer-close { margin-top: 34px; padding: 28px 30px; border-radius: 30px; background: radial-gradient(circle at 83% 50%, rgba(219, 246, 255, 0.62) 0%, rgba(125, 211, 252, 0.34) 15%, transparent 34%), radial-gradient(circle at 68% 14%, rgba(255,255,255,0.42) 0%, transparent 30%), linear-gradient(135deg, #1d4ed8 0%, #2563eb 32%, #38bdf8 72%, #67e8f9 100%); color: white; display: flex; align-items: center; justify-content: space-between; gap: 26px; text-align: left; position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.38); box-shadow: 0 24px 70px rgba(14, 165, 233, 0.32), 0 10px 30px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.46), inset 0 -1px 0 rgba(255, 255, 255, 0.16); isolation: isolate; }
+  .offer-close::before { content: ""; position: absolute; width: 320px; height: 320px; right: 260px; top: 50%; transform: translateY(-50%); border-radius: 50%; background: radial-gradient(circle at 62% 24%, rgba(230, 252, 255, 0.95) 0%, rgba(186, 230, 253, 0.55) 17%, rgba(37, 99, 235, 0.30) 39%, rgba(29, 78, 216, 0.16) 66%, transparent 72%); box-shadow: 0 0 0 1px rgba(255,255,255,0.20), 0 0 34px rgba(186,230,253,0.62), 0 0 90px rgba(56,189,248,0.34); opacity: 0.82; filter: blur(0.2px); z-index: -1; }
+  .offer-close::after { content: "ARIA"; position: absolute; right: 312px; top: 50%; transform: translateY(-50%); width: 216px; height: 216px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; letter-spacing: -0.04em; color: rgba(255,255,255,0.92); background: radial-gradient(circle at 70% 23%, rgba(231, 253, 255, 0.92) 0%, rgba(186, 230, 253, 0.48) 18%, transparent 28%), radial-gradient(circle at 52% 55%, #2455d8 0%, #1d4ed8 54%, #0f3fbd 100%); box-shadow: inset -24px 18px 42px rgba(219, 246, 255, 0.55), inset 22px -22px 42px rgba(15, 63, 189, 0.42), 0 0 0 1px rgba(255,255,255,0.24), 0 0 0 36px rgba(255,255,255,0.075), 0 0 0 70px rgba(255,255,255,0.045), 0 26px 70px rgba(12, 74, 110, 0.20); opacity: 0.72; pointer-events: none; }
+  .offer-close > * { position: relative; z-index: 1; }
+  .offer-close strong { display: block; max-width: 660px; font-size: clamp(22px, 3vw, 34px); line-height: 1.18; letter-spacing: -0.04em; margin-bottom: 14px; color: rgba(255,255,255,0.98); text-shadow: 0 2px 16px rgba(15, 23, 42, 0.18); }
+  .offer-close span { display: block; max-width: 640px; color: rgba(255,255,255,0.84); font-size: clamp(15px, 1.6vw, 18px); line-height: 1.58; }
+  .offer-close .btn { flex: 0 0 auto; }
+  @media (max-width: 760px) { .offer-wrap { padding: 32px 20px; border-radius: 24px; } .offer-grid { grid-template-columns: 1fr; } .offer-close { flex-direction: column; align-items: flex-start; padding: 30px 24px; } .offer-close::before { right: -90px; top: -80px; transform: none; width: 260px; height: 260px; opacity: 0.55; } .offer-close::after { right: -44px; top: -36px; transform: none; width: 150px; height: 150px; font-size: 16px; opacity: 0.42; } }
+
+  /* PARALLAX */
+  .parallax-enabled .hero { transform: translate3d(0, var(--hero-shift, 0px), 0) scale(var(--hero-scale, 1)); transform-origin: center bottom; will-change: transform; backface-visibility: hidden; }
+  .parallax-enabled #features { margin-top: 0; transform: translate3d(0, var(--problem-shift, -36px), 0) scale(var(--problem-scale, 0.965)) rotateX(var(--problem-tilt, 0deg)); transform-origin: center top; will-change: transform, opacity; backface-visibility: hidden; opacity: var(--problem-opacity, 1); z-index: 0; }
+  .parallax-enabled #benefits { position: relative; z-index: 4; margin-top: var(--benefits-lift, -92px); padding-top: 122px; border-radius: 34px 34px 0 0; transform: translate3d(0, var(--benefits-shift, 0px), 0); will-change: transform; backface-visibility: hidden; background: linear-gradient(180deg, rgba(1, 3, 10, 0.98) 0%, rgba(1, 3, 10, 0.94) 18%, transparent 100%); box-shadow: 0 -42px 90px rgba(1, 3, 10, 0.86), 0 -22px 60px rgba(14, 165, 233, 0.12); }
+  @media (max-width: 980px) { .parallax-enabled #features { transform: translate3d(0, var(--problem-shift, -18px), 0) scale(var(--problem-scale, 0.985)) rotateX(0deg); } .parallax-enabled #benefits { margin-top: -44px; padding-top: 92px; border-radius: 24px 24px 0 0; } }
+  @media (prefers-reduced-motion: reduce) { .parallax-enabled .hero, .parallax-enabled #features, .parallax-enabled #benefits { transform: none; will-change: auto; } .parallax-enabled #benefits { margin-top: 0; padding-top: 72px; } }
+
+  @media (hover: none), (pointer: coarse) {
+    html { scroll-behavior: auto; }
+    body::before, body::after { display: none; }
+    .video-stage { filter: none; }
+    .video-stage::before { animation: none; filter: blur(12px); opacity: 0.62; }
+    .video-stage::after { box-shadow: 0 0 24px rgba(56, 189, 248, 0.32); }
+    .benefit-card, .offer-item { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .benefit-card:hover, #benefits .card:hover { transform: none; }
+    .parallax-enabled .hero, .parallax-enabled #features, .parallax-enabled #benefits { transform: none; will-change: auto; }
   }
 
-  #benefits .benefits-grid {
-    gap: 24px;
-    perspective: 1000px;
-  }
-
-  #benefits .parent {
-    width: 100%;
-    padding: 20px;
-    perspective: 1000px;
-  }
-
-  #benefits .card {
-    position: relative;
-    width: 100%;
-    min-height: 330px;
-    padding-top: 50px;
-    border: 0;
-    transform-style: preserve-3d;
-    background: transparent;
-    box-shadow: none;
-    transition: all 0.5s ease-in-out;
-  }
-
-  #benefits .card:hover {
-    transform: rotate3d(0.5, 1, 0, 30deg);
-  }
-
-  #benefits .content-box {
-    min-height: 280px;
-    background: rgba(4, 193, 250, 0.73);
-    box-shadow:
-      0 28px 42px -18px rgba(14, 165, 233, 0.42),
-      0 18px 60px rgba(2, 6, 23, 0.22);
-    transition: all 0.5s ease-in-out;
-    padding: 60px 25px 25px;
-    transform-style: preserve-3d;
-  }
-
-  #benefits .card-title {
-    display: inline-block;
-    color: white;
-    font-size: 25px;
-    font-weight: 900;
-    line-height: 1.08;
-    letter-spacing: -0.035em;
-    transition: all 0.5s ease-in-out;
-    transform: translate3d(0, 0, 50px);
-  }
-
-  #benefits .card-title:hover {
-    transform: translate3d(0, 0, 60px);
-  }
-
-  #benefits .card-content {
-    margin-top: 10px;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.55;
-    color: #f2f2f2;
-    transition: all 0.5s ease-in-out;
-    transform: translate3d(0, 0, 30px);
-  }
-
-  #benefits .card-content:hover {
-    transform: translate3d(0, 0, 60px);
-  }
-
-  #benefits .see-more {
-    cursor: pointer;
-    margin-top: 1rem;
-    display: inline-block;
-    font-weight: 900;
-    font-size: 9px;
-    text-transform: uppercase;
-    color: var(--accent-deep);
-    background: white;
-    padding: 0.5rem 0.7rem;
-    transition: all 0.5s ease-in-out;
-    transform: translate3d(0, 0, 20px);
-  }
-
-  #benefits .see-more:hover {
-    transform: translate3d(0, 0, 60px);
-  }
-
-  #benefits .date-box {
-    position: absolute;
-    top: 30px;
-    right: 30px;
-    height: 60px;
-    width: 60px;
-    background: white;
-    border: 1px solid var(--accent);
-    padding: 10px;
-    transform: translate3d(0, 0, 80px);
-    box-shadow: rgba(14, 165, 233, 0.24) 0 17px 10px -10px;
-  }
-
-  #benefits .date-box span {
-    display: block;
-    text-align: center;
-  }
-
-  #benefits .date-box .month {
-    color: var(--accent-deep);
-    font-size: 9px;
-    font-weight: 700;
-  }
-
-  #benefits .date-box .date {
-    font-size: 20px;
-    font-weight: 900;
-    color: var(--accent-deep);
-  }
-
-  @media (max-width: 880px) {
-    #benefits .benefits-grid {
-      max-width: 380px;
-      margin: 0 auto;
-    }
-
-    #benefits .parent {
-      padding: 16px;
-    }
-
-    #benefits .card:hover {
-      transform: translateY(-4px);
-    }
-  }
-
-  #features {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    padding: 0 !important;
-    position: relative;
-    overflow: hidden;
-    z-index: 0;
-    aspect-ratio: 1672 / 941;
-    min-height: 0;
-    background: #020817 url("background.webp") center center / cover no-repeat;
-  }
-
-  #features::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background:
-      linear-gradient(90deg,
-        rgba(3, 12, 32, 0.92) 0%,
-        rgba(7, 89, 133, 0.78) 38%,
-        rgba(14, 165, 233, 0.5) 68%,
-        rgba(8, 47, 73, 0.42) 100%);
-  }
-
-  #features .problem-hotspot {
-    position: absolute;
-    top: 73.4%;
-    height: 7.9%;
-    border-radius: 18px;
-    z-index: 2;
-    text-indent: -9999px;
-    overflow: hidden;
-  }
-
-  #features .problem-headline {
-    position: absolute;
-    left: 50%;
-    top: 42%;
-    width: min(980px, calc(100% - 48px));
-    z-index: 2;
-    transform:
-      translate3d(-50%, var(--problem-title-shift, 24px), 0)
-      scale(var(--problem-title-scale, 0.98));
-    color: white;
-    text-align: center;
-    font-size: clamp(42px, 7vw, 104px);
-    font-weight: 900;
-    line-height: 0.98;
-    letter-spacing: -0.06em;
-    opacity: var(--problem-title-opacity, 0);
-    text-shadow:
-      0 0 28px rgba(56, 189, 248, 0.42),
-      0 18px 54px rgba(2, 6, 23, 0.72);
-    pointer-events: none;
-    will-change: opacity, transform;
-    backface-visibility: hidden;
-  }
-
-  #features .problem-headline .accent-text {
-    background: linear-gradient(135deg, #dbeafe 0%, var(--accent) 44%, #2563eb 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  #features .problem-hotspot.primary {
-    left: 36.3%;
-    width: 12.5%;
-  }
-
-  #features .problem-hotspot.secondary {
-    left: 50.5%;
-    width: 13.1%;
-  }
-
-  #features .problem-hotspot:focus-visible {
-    outline: 3px solid rgba(186, 230, 253, 0.95);
-    outline-offset: 4px;
-  }
-
-  @media (max-width: 760px) {
-    #features {
-      background-size: cover;
-      background-position: center;
-    }
-
-    #features .problem-hotspot {
-      top: 76.6%;
-      height: 9%;
-      border-radius: 12px;
-    }
-
-    #features .problem-hotspot.primary {
-      left: 34.4%;
-      width: 14.2%;
-    }
-
-    #features .problem-hotspot.secondary {
-      left: 50.6%;
-      width: 14.9%;
-    }
-
-    #features .problem-headline {
-      top: 41%;
-      width: min(92%, 560px);
-      font-size: clamp(34px, 11vw, 58px);
-    }
-  }
-
-  /* ---------- IRRESISTIBLE OFFER ---------- */
-  .offer-section {
-    padding: 86px 0 110px;
-    text-align: center;
-  }
-  .offer-wrap {
-    background:
-      radial-gradient(ellipse at top, rgba(56, 189, 248, 0.14), transparent 48%),
-      linear-gradient(180deg, rgba(2, 6, 23, 0.94) 0%, rgba(1, 3, 10, 0.98) 100%);
-    border: 1px solid rgba(56, 189, 248, 0.18);
-    border-radius: 30px;
-    padding: 46px;
-    box-shadow: 0 18px 60px rgba(14, 165, 233, 0.10), var(--shadow-card);
-    position: relative;
-    overflow: hidden;
-  }
-  .offer-wrap::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 10%; right: 10%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8), transparent);
-  }
-  .offer-intro {
-    max-width: 760px;
-    margin: -34px auto 44px;
-    color: rgba(226, 232, 240, 0.76);
-    font-size: 16px;
-    line-height: 1.65;
-  }
-  .offer-wrap h2 {
-    color: rgba(248, 250, 252, 0.98) !important;
-  }
-  .offer-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    text-align: left;
-    margin-top: 22px;
-  }
-  .offer-item {
-    background: rgba(255,255,255,0.055);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 18px;
-    padding: 22px 22px 22px 56px;
-    position: relative;
-    box-shadow: 0 8px 26px rgba(0,0,0,0.035);
-    contain: layout style;
-  }
-  .offer-check {
-    position: absolute;
-    left: 20px; top: 23px;
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-    color: white;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    box-shadow: 0 5px 12px rgba(56, 189, 248, 0.28);
-  }
-  .offer-item h3 {
-    font-size: 16px;
-    font-weight: 650;
-    letter-spacing: -0.015em;
-    margin-bottom: 6px;
-    color: rgba(248, 250, 252, 0.96);
-  }
-  .offer-item p {
-    color: rgba(203, 213, 225, 0.78);
-    font-size: 14px;
-    line-height: 1.55;
-  }
-  .offer-close {
-    margin-top: 34px;
-    padding: 28px 30px;
-    border-radius: 30px;
-    background:
-      radial-gradient(circle at 83% 50%, rgba(219, 246, 255, 0.62) 0%, rgba(125, 211, 252, 0.34) 15%, transparent 34%),
-      radial-gradient(circle at 68% 14%, rgba(255,255,255,0.42) 0%, transparent 30%),
-      linear-gradient(135deg, #1d4ed8 0%, #2563eb 32%, #38bdf8 72%, #67e8f9 100%);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 26px;
-    text-align: left;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.38);
-    box-shadow:
-      0 24px 70px rgba(14, 165, 233, 0.32),
-      0 10px 30px rgba(37, 99, 235, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.46),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.16);
-    isolation: isolate;
-  }
-  .offer-close::before {
-    content: "";
-    position: absolute;
-    width: 320px;
-    height: 320px;
-    right: 260px;
-    top: 50%;
-    transform: translateY(-50%);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 62% 24%, rgba(230, 252, 255, 0.95) 0%, rgba(186, 230, 253, 0.55) 17%, rgba(37, 99, 235, 0.30) 39%, rgba(29, 78, 216, 0.16) 66%, transparent 72%);
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.20),
-      0 0 34px rgba(186,230,253,0.62),
-      0 0 90px rgba(56,189,248,0.34);
-    opacity: 0.82;
-    filter: blur(0.2px);
-    z-index: -1;
-  }
-  .offer-close::after {
-    content: "ARIA";
-    position: absolute;
-    right: 312px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 216px;
-    height: 216px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.04em;
-    color: rgba(255,255,255,0.92);
-    background:
-      radial-gradient(circle at 70% 23%, rgba(231, 253, 255, 0.92) 0%, rgba(186, 230, 253, 0.48) 18%, transparent 28%),
-      radial-gradient(circle at 52% 55%, #2455d8 0%, #1d4ed8 54%, #0f3fbd 100%);
-    box-shadow:
-      inset -24px 18px 42px rgba(219, 246, 255, 0.55),
-      inset 22px -22px 42px rgba(15, 63, 189, 0.42),
-      0 0 0 1px rgba(255,255,255,0.24),
-      0 0 0 36px rgba(255,255,255,0.075),
-      0 0 0 70px rgba(255,255,255,0.045),
-      0 26px 70px rgba(12, 74, 110, 0.20);
-    opacity: 0.72;
-    pointer-events: none;
-  }
-  .offer-close > * {
-    position: relative;
-    z-index: 1;
-  }
-  .offer-close strong {
-    display: block;
-    max-width: 660px;
-    font-size: clamp(22px, 3vw, 34px);
-    line-height: 1.18;
-    letter-spacing: -0.04em;
-    margin-bottom: 14px;
-    color: rgba(255,255,255,0.98);
-    text-shadow: 0 2px 16px rgba(15, 23, 42, 0.18);
-  }
-  .offer-close span {
-    display: block;
-    max-width: 640px;
-    color: rgba(255,255,255,0.84);
-    font-size: clamp(15px, 1.6vw, 18px);
-    line-height: 1.58;
-  }
-  /* offer-close btn: prevent shrinking */
-  .offer-close .btn {
-    flex: 0 0 auto;
-  }
-  @media (max-width: 760px) {
-    .offer-wrap { padding: 32px 20px; border-radius: 24px; }
-    .offer-grid { grid-template-columns: 1fr; }
-    .offer-close { flex-direction: column; align-items: flex-start; padding: 30px 24px; }
-    .offer-close::before { right: -90px; top: -80px; transform: none; width: 260px; height: 260px; opacity: 0.55; }
-    .offer-close::after { right: -44px; top: -36px; transform: none; width: 150px; height: 150px; font-size: 16px; opacity: 0.42; }
-  }
-
-  /* ---------- LIGHTWEIGHT 3D PARALLAX BRIDGE ---------- */
-  .parallax-enabled .hero {
-    transform:
-      translate3d(0, var(--hero-shift, 0px), 0)
-      scale(var(--hero-scale, 1));
-    transform-origin: center bottom;
-    will-change: transform;
-    backface-visibility: hidden;
-  }
-
-  .parallax-enabled #features {
-    margin-top: 0;
-    transform:
-      translate3d(0, var(--problem-shift, -36px), 0)
-      scale(var(--problem-scale, 0.965))
-      rotateX(var(--problem-tilt, 0deg));
-    transform-origin: center top;
-    will-change: transform, opacity;
-    backface-visibility: hidden;
-    opacity: var(--problem-opacity, 1);
-    z-index: 0;
-  }
-
-  .parallax-enabled #benefits {
-    position: relative;
-    z-index: 4;
-    margin-top: var(--benefits-lift, -92px);
-    padding-top: 122px;
-    border-radius: 34px 34px 0 0;
-    transform: translate3d(0, var(--benefits-shift, 0px), 0);
-    will-change: transform;
-    backface-visibility: hidden;
-    background:
-      linear-gradient(180deg, rgba(1, 3, 10, 0.98) 0%, rgba(1, 3, 10, 0.94) 18%, transparent 100%);
-    box-shadow:
-      0 -42px 90px rgba(1, 3, 10, 0.86),
-      0 -22px 60px rgba(14, 165, 233, 0.12);
-  }
-
-  /* Force stable compositing for large transformed regions in Chrome. */
-  .hero,
-  #features,
-  #benefits {
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    isolation: isolate;
-  }
-  .video-stage,
-  .offer-wrap {
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    transform: translateZ(0);
-  }
-
-  @media (max-width: 980px) {
-    .parallax-enabled #features {
-      transform:
-        translate3d(0, var(--problem-shift, -18px), 0)
-        scale(var(--problem-scale, 0.985))
-        rotateX(0deg);
-    }
-
-    .parallax-enabled #benefits {
-      margin-top: -44px;
-      padding-top: 92px;
-      border-radius: 24px 24px 0 0;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .parallax-enabled .hero,
-    .parallax-enabled #features,
-    .parallax-enabled #benefits {
-      transform: none;
-      will-change: auto;
-    }
-
-    .parallax-enabled #benefits {
-      margin-top: 0;
-      padding-top: 72px;
-    }
-  }
-
-	  /* Mobile/GPU pressure tuning without removing effects. */
-	  @media (hover: none), (pointer: coarse) {
-	    html {
-	      scroll-behavior: auto;
-	    }
-
-	    body::before,
-	    body::after {
-	      display: none;
-	    }
-
-	    .video-stage {
-	      filter: none;
-	    }
-
-	    .video-stage::before {
-	      animation: none;
-	      filter: blur(12px);
-	      opacity: 0.62;
-	    }
-
-	    .video-stage::after {
-	      box-shadow: 0 0 24px rgba(56, 189, 248, 0.32);
-	    }
-
-	    .benefit-card,
-	    .offer-item {
-	      backdrop-filter: none;
-	      -webkit-backdrop-filter: none;
-	    }
-
-	    .benefit-card:hover,
-	    #benefits .card:hover {
-	      transform: none;
-	    }
-
-	    .parallax-enabled .hero,
-	    .parallax-enabled #features,
-	    .parallax-enabled #benefits {
-	      transform: none;
-	      will-change: auto;
-	    }
-	  }
-
-  /* Scroll-phase GPU relief (visual style remains, but lighter during active scroll). */
-  body.is-scrolling .benefit-card,
-  body.is-scrolling .offer-item {
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-  }
-
-  body.is-scrolling .video-stage::before,
-  body.is-scrolling .btn::before,
-  body.is-scrolling .badge-dot {
-    animation-play-state: paused;
-  }
-  
-  /* Reduce blur cost during active scroll */
-  body.is-scrolling .benefit-card,
-  body.is-scrolling .offer-item {
-    transition: none;
-  }
-
-
-  /* WebP fallback for browsers that don't support it */
-  .no-webp .hero::before {
-    background: url("background Image 2.jpeg") center right / cover no-repeat;
-  }
-  .no-webp #features {
-    background: #020817 url("Background image.jpeg") center center / cover no-repeat;
-  }
+  body.is-scrolling * { animation-play-state: paused !important; }
 </style>
 
 <script>
-// WebP detection - adds 'no-webp' class if unsupported
 (function(){
   var img = new Image();
-  img.onload = img.onerror = function(){
-    if(img.height !== 1) document.documentElement.classList.add('no-webp');
-  };
+  img.onload = img.onerror = function(){ if(img.height !== 1) document.documentElement.classList.add('no-webp'); };
   img.src = 'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JZQCdAEO/gHOAAA=';
 })();
 </script>
@@ -1328,7 +299,6 @@
 
   <div class="container">
 
-    <!-- ============ NAV ============ -->
     <nav>
       <div class="logo">
         <div class="logo-mark">
@@ -1338,7 +308,6 @@
         </div>
         <span>Nexus Luma</span>
       </div>
-
       <ul class="nav-links">
         <li><a href="#benefits">How It Works</a></li>
         <li><a href="#features">Why Aria</a></li>
@@ -1346,13 +315,9 @@
         <li><a href="#results">Final Step</a></li>
         <li><a href="questionnaire.html">Try Aria</a></li>
       </ul>
-
-      <a href="questionnaire.html" class="btn btn--sm">
-        Try Aria Free
-      </a>
+      <a href="questionnaire.html" class="btn btn--sm">Try Aria Free</a>
     </nav>
 
-    <!-- ============ HERO ============ -->
     <section class="hero">
       <div class="hero-grid">
         <div class="hero-copy">
@@ -1360,22 +325,16 @@
             <span class="badge-dot"></span>
             Nexus Luma presents Aria
           </div>
-
           <h1>
             Book with ARIA<br>
             <span class="accent-text">Turn More Leads Into Booked Calls.</span>
           </h1>
-
           <p>
             Most businesses lose ready-to-book leads because no one responds fast enough.<br>
             Aria answers instantly, collects the right details, and guides serious prospects to book before they leave.
           </p>
-
           <div class="hero-actions">
-            <a href="questionnaire.html" class="btn btn-primary">
-              Try The Booking System Live
-            </a>
-
+            <a href="questionnaire.html" class="btn btn-primary">Try The Booking System Live</a>
             <div class="social-proof">
               <div class="avatars">
                 <div class="avatar a1"></div>
@@ -1389,41 +348,38 @@
               </div>
             </div>
           </div>
+          <p class="hero-microcopy">Try this exactly like your customers would.</p>
         </div>
 
         <div class="hero-media">
           <div class="video-col">
-            <div class="video-stage">
             <div class="video-label">Watch how a visitor turns into a booked call in under 60 seconds <span class="arrow">↓</span></div>
-            <div class="video-wrap">
-              <video class="aria-video" data-src="aria-avatar.mp4" autoplay playsinline preload="auto" aria-label="Aria avatar video"></video>
-              <div class="video-audio-toggle" aria-hidden="true">
-                <svg class="audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                  <line x1="23" y1="9" x2="17" y2="15"></line>
-                  <line x1="17" y1="9" x2="23" y2="15"></line>
-                </svg>
-                <svg class="audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                </svg>
-                <span class="audio-off">Muted</span>
-                <span class="audio-on">Sound on</span>
+            <div class="video-stage">
+              <div class="video-wrap">
+                <!-- VIDEO FIX: src set directly, autoplay + muted + loop + preload=auto -->
+                <video class="aria-video" src="Avatar_Video_-_Eli_Avatar.mp4" autoplay muted loop playsinline preload="auto" aria-label="Aria avatar video"></video>
+                <div class="video-audio-toggle" aria-hidden="true">
+                  <svg class="audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <line x1="23" y1="9" x2="17" y2="15"></line>
+                    <line x1="17" y1="9" x2="23" y2="15"></line>
+                  </svg>
+                  <svg class="audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                  </svg>
+                  <span class="audio-off">Muted</span>
+                  <span class="audio-on">Sound on</span>
+                </div>
               </div>
             </div>
-          </div>
-          <p class="hero-microcopy">Try this exactly like your customers would.</p>
-          <a href="questionnaire.html" class="btn btn--xl">
-            Book with ARIA
-          </a>
+            <a href="questionnaire.html" class="btn btn--xl">Book with ARIA</a>
           </div>
         </div>
       </div>
     </section>
 
-
-    <!-- ============ PROBLEM / ARIA SOLUTION ============ -->
     <section class="benefits" id="features" style="padding-top: 30px; padding-bottom: 72px;">
       <div class="problem-headline" aria-hidden="true">
         Every Missed Lead Is Money Walking Away. Book With <span class="accent-text">ARIA</span>
@@ -1432,14 +388,10 @@
       <a class="problem-hotspot secondary" href="questionnaire.html" aria-label="Start with questionnaire">Try The Demo</a>
     </section>
 
-    <!-- ============ BENEFITS ============ -->
     <section class="benefits" id="benefits">
       <span class="section-label">From Lead To Booked Call</span>
-
       <h2>Three Simple Steps From Missed Lead To Booked Call.</h2>
-
       <div class="benefits-grid">
-
         <div class="parent benefit-card">
           <div class="card">
             <div class="content-box">
@@ -1447,27 +399,19 @@
               <p class="card-content">The moment someone shows interest, Aria responds so you never miss an opportunity while the lead is still hot.</p>
               <span class="see-more">See Aria Work</span>
             </div>
-            <div class="date-box">
-              <span class="month">STEP</span>
-              <span class="date">01</span>
-            </div>
+            <div class="date-box"><span class="month">STEP</span><span class="date">01</span></div>
           </div>
         </div>
-
         <div class="parent benefit-card">
           <div class="card">
             <div class="content-box">
-              <span class="card-title">2. Capture & Qualify</span>
+              <span class="card-title">2. Capture &amp; Qualify</span>
               <p class="card-content">Aria asks simple questions, captures what they need, and helps separate serious buyers from people who are just browsing.</p>
               <span class="see-more">Start Booking</span>
             </div>
-            <div class="date-box">
-              <span class="month">STEP</span>
-              <span class="date">02</span>
-            </div>
+            <div class="date-box"><span class="month">STEP</span><span class="date">02</span></div>
           </div>
         </div>
-
         <div class="parent benefit-card">
           <div class="card">
             <div class="content-box">
@@ -1475,102 +419,44 @@
               <p class="card-content">Qualified leads are guided toward your calendar, and you get the details you need before the conversation starts.</p>
               <span class="see-more">Get Notified</span>
             </div>
-            <div class="date-box">
-              <span class="month">STEP</span>
-              <span class="date">03</span>
-            </div>
+            <div class="date-box"><span class="month">STEP</span><span class="date">03</span></div>
           </div>
         </div>
-
       </div>
     </section>
 
-
-    <!-- ============ IRRESISTIBLE OFFER ============ -->
     <section class="offer-section" id="offer">
       <div class="offer-wrap">
         <span class="section-label">Everything Included</span>
-
-        <h2 style="font-size: clamp(32px, 4.4vw, 52px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; color: var(--text-primary); max-width: 820px; margin: 0 auto 60px;">This Isn’t Just A Website — It’s A Client Booking System.</h2>
-
-        <p class="offer-intro">
-          Most websites just sit there. This system helps your business look trusted, answer leads instantly, collect the right details, and turn attention into booked calls.
-        </p>
-
+        <h2 style="font-size: clamp(32px, 4.4vw, 52px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; color: var(--text-primary); max-width: 820px; margin: 0 auto 60px;">This Isn't Just A Website — It's A Client Booking System.</h2>
+        <p class="offer-intro">Most websites just sit there. This system helps your business look trusted, answer leads instantly, collect the right details, and turn attention into booked calls.</p>
         <div class="offer-grid">
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Full Custom Website</h3>
-            <p>A clean, premium website built around your business, services, offer, and brand so visitors feel they are dealing with a serious company from the first click.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Conversion-Focused Page Copy</h3>
-            <p>Clear headlines, pain-point messaging, trust sections, and calls-to-action designed to make visitors understand the value and feel safe taking the next step.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>SEO Keyword Foundation</h3>
-            <p>We add relevant service keywords, page titles, descriptions, and local search terms to help your business start building visibility on Google.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Aria 24/7 AI Assistant</h3>
-            <p>Aria speaks with visitors, asks the right questions, captures lead details, and guides serious prospects toward booking while their interest is still hot.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Lead Capture Questionnaire</h3>
-            <p>A smooth qualification flow that collects name, business, needs, struggles, availability, and intent so your calendar gets better conversations — not random calls.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Live Lead Dashboard</h3>
-            <p>Every lead gets organized into one simple dashboard so you can see who came in, what they need, and who deserves your fastest follow-up.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Automated Follow-Up Email</h3>
-            <p>After a visitor completes the flow, they receive a professional follow-up email that confirms the next step and keeps trust high before the call.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>3 Free Revisions Included</h3>
-            <p>You get three revision rounds to tighten the look, wording, layout, or flow so the final system feels aligned with your business before launch.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Mobile-Ready Experience</h3>
-            <p>Your funnel is designed to look clean on phones, tablets, and desktops so visitors can take action the moment they are interested.</p>
-          </div>
-          <div class="offer-item">
-            <div class="offer-check">✓</div>
-            <h3>Launch Setup Support</h3>
-            <p>We help connect the moving pieces so your website, Aria, lead storage, and follow-up flow work together as one client-booking system.</p>
-          </div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Full Custom Website</h3><p>A clean, premium website built around your business, services, offer, and brand so visitors feel they are dealing with a serious company from the first click.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Conversion-Focused Page Copy</h3><p>Clear headlines, pain-point messaging, trust sections, and calls-to-action designed to make visitors understand the value and feel safe taking the next step.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>SEO Keyword Foundation</h3><p>We add relevant service keywords, page titles, descriptions, and local search terms to help your business start building visibility on Google.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Aria 24/7 AI Assistant</h3><p>Aria speaks with visitors, asks the right questions, captures lead details, and guides serious prospects toward booking while their interest is still hot.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Lead Capture Questionnaire</h3><p>A smooth qualification flow that collects name, business, needs, struggles, availability, and intent so your calendar gets better conversations — not random calls.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Live Lead Dashboard</h3><p>Every lead gets organized into one simple dashboard so you can see who came in, what they need, and who deserves your fastest follow-up.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Automated Follow-Up Email</h3><p>After a visitor completes the flow, they receive a professional follow-up email that confirms the next step and keeps trust high before the call.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>3 Free Revisions Included</h3><p>You get three revision rounds to tighten the look, wording, layout, or flow so the final system feels aligned with your business before launch.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Mobile-Ready Experience</h3><p>Your funnel is designed to look clean on phones, tablets, and desktops so visitors can take action the moment they are interested.</p></div>
+          <div class="offer-item"><div class="offer-check">✓</div><h3>Launch Setup Support</h3><p>We help connect the moving pieces so your website, Aria, lead storage, and follow-up flow work together as one client-booking system.</p></div>
         </div>
-
         <div class="offer-close">
           <div>
             <strong>Built to help more visitors become real conversations.</strong>
             <span>Aria helps your business respond faster, look more professional, and give every serious visitor a clear path to book.</span>
           </div>
-          <a href="questionnaire.html" class="btn btn-primary">
-            Try The Booking System Live
-          </a>
+          <a href="questionnaire.html" class="btn btn-primary">Try The Booking System Live</a>
         </div>
       </div>
     </section>
 
-
-    <!-- ============ FINAL CTA ============ -->
     <section class="benefits" id="results" style="padding-top: 0;">
       <span class="section-label">Ready To See It Work?</span>
       <h2>Book With ARIA — Let Her Handle The First Conversation.</h2>
       <p style="max-width: 650px; margin: -34px auto 34px; color: var(--text-secondary); font-size: 16px; line-height: 1.6;">If your business already gets views, clicks, calls, or referrals, Aria helps turn that attention into warmer conversations. Try the live flow, then book a strategy call so we can map this same system to your business.</p>
-      <a href="questionnaire.html" class="btn btn-primary">
-        Book With ARIA
-      </a>
+      <a href="questionnaire.html" class="btn btn-primary">Book With ARIA</a>
     </section>
 
   </div>
@@ -1579,58 +465,45 @@
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isCoarsePointer = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-  }
-
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   window.addEventListener('pageshow', (event) => {
-    if (event.persisted) {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    }
+    if (event.persisted) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   });
 
-  requestAnimationFrame(() => {
-    document.body.classList.add('page-loaded');
-  });
+  requestAnimationFrame(() => { document.body.classList.add('page-loaded'); });
 
-	  document.querySelectorAll('.video-wrap').forEach((wrap) => {
-	    const video = wrap.querySelector('.aria-video');
-	    if (!video) return;
-	    const shouldLoadVideo = !isCoarsePointer && window.innerWidth > 980;
+  // VIDEO — plays on all devices; click toggles audio
+  document.querySelectorAll('.video-wrap').forEach((wrap) => {
+    const video = wrap.querySelector('.aria-video');
+    if (!video) return;
 
-	    const syncAudioState = () => {
-	      wrap.classList.toggle('audio-on', !video.muted);
-	    };
+    const syncAudioState = () => { wrap.classList.toggle('audio-on', !video.muted); };
 
-	    video.muted = true;
-	    syncAudioState();
-	    if (!shouldLoadVideo) return;
+    video.muted = true;
+    syncAudioState();
 
-	    if (!video.src) video.src = video.dataset.src;
-	    video.play().catch(() => {});
+    // Load from data-src if src not set directly
+    if (!video.src && video.dataset.src) video.src = video.dataset.src;
+
+    // Autoplay on all devices — silently ignore if browser blocks
+    video.play().catch(() => {});
 
     wrap.addEventListener('click', () => {
       video.muted = !video.muted;
-      if (!video.paused) {
-        syncAudioState();
-        return;
-      }
+      if (!video.paused) { syncAudioState(); return; }
       video.play().finally(syncAudioState).catch(syncAudioState);
     });
   });
 
   if (!prefersReducedMotion) {
-    const minFrameMs = isCoarsePointer ? (1000 / 45) : (1000 / 60);
     const revealItems = [
       ...document.querySelectorAll('nav, section > .section-label, section > h2, section > p, .benefit-card, .offer-wrap, .offer-item, .offer-close')
     ];
-
     revealItems.forEach((item, index) => {
       item.classList.add('reveal');
       item.style.setProperty('--reveal-delay', `${Math.min(index % 4, 3) * 70}ms`);
     });
-
     if ('IntersectionObserver' in window) {
       const revealObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach((entry) => {
@@ -1639,11 +512,7 @@
           entry.target.style.willChange = 'auto';
           observer.unobserve(entry.target);
         });
-      }, {
-        threshold: 0.16,
-        rootMargin: '0px 0px -8% 0px'
-      });
-
+      }, { threshold: 0.16, rootMargin: '0px 0px -8% 0px' });
       revealItems.forEach((item) => revealObserver.observe(item));
     } else {
       revealItems.forEach((item) => item.classList.add('is-visible'));
@@ -1651,193 +520,66 @@
 
     if (isCoarsePointer || window.innerWidth <= 980) {
       document.body.classList.add('mobile-scroll-optimized');
-      setTimeout(() => {
-        document.querySelectorAll('.hero-copy, .hero-media, .reveal').forEach((el) => {
-          el.style.willChange = 'auto';
-        });
-      }, 1000);
+      setTimeout(() => { document.querySelectorAll('.hero-copy, .hero-media, .reveal').forEach((el) => { el.style.willChange = 'auto'; }); }, 1000);
     } else {
-    const hero = document.querySelector('.hero');
-    const problem = document.querySelector('#features');
+      const hero = document.querySelector('.hero');
+      const problem = document.querySelector('#features');
+      let parallaxFrame = 0, lastFrameTime = performance.now(), problemTop = 0, bridgeStart = 0, bridgeDistance = 1, resizeFrame = 0;
+      const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+      const smoothstep = (v) => v * v * (3 - 2 * v);
+      const viewportHeight = () => window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
+      const current = { heroShift:0, heroScale:1, problemShift:-68, problemScale:0.945, problemTilt:-2.2, benefitsShift:34, problemTitleOpacity:0, problemTitleShift:24, problemTitleScale:0.98 };
+      const target = { ...current };
 
-    let parallaxFrame = 0;
-    let lastFrameTime = performance.now();
-    let problemTop = 0;
-    let bridgeStart = 0;
-    let bridgeDistance = 1;
-    let resizeFrame = 0;
-    let pendingParallaxRead = false;
-    let released = false;
-    let scrollingTimer = 0;
-    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-    const smoothstep = (value) => value * value * (3 - 2 * value);
-    const viewportHeight = () => window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
-
-    const current = {
-      heroShift: 0,
-      heroScale: 1,
-      problemShift: -68,
-      problemScale: 0.945,
-      problemTilt: -2.2,
-      benefitsShift: 34,
-      problemTitleOpacity: 0,
-      problemTitleShift: 24,
-      problemTitleScale: 0.98
-    };
-
-    const target = { ...current };
-
-    function measureParallax() {
-      if (!hero || !problem) return;
-      const viewportH = viewportHeight();
-      // Use getBoundingClientRect + scrollY for accurate layout measurement (no offsetParent loop thrash)
-      problemTop = problem.getBoundingClientRect().top + window.scrollY;
-      bridgeStart = viewportH * 0.94;
-      bridgeDistance = Math.max(1, viewportH * 0.96);
-    }
-
-    function setParallaxTarget() {
-      if (!hero || !problem) return;
-
-      const problemViewportTop = problemTop - window.scrollY;
-      const raw = (bridgeStart - problemViewportTop) / bridgeDistance;
-      const progress = smoothstep(clamp(raw, 0, 1));
-
-      target.heroShift = progress * -34;
-      target.heroScale = 1 + progress * 0.018;
-      target.problemShift = -68 + progress * 92;
-      target.problemScale = 0.945 + progress * 0.066;
-      target.problemTilt = -2.2 + progress * 2.2;
-      target.benefitsShift = 34 - progress * 34;
-      const titleIn = smoothstep(clamp(progress / 0.28, 0, 1));
-      // Delay fade-out so the headline stays readable longer during the bridge scroll.
-      const titleOut = smoothstep(clamp((progress - 0.99) / 0.01, 0, 1));
-      target.problemTitleOpacity = Math.max(0, titleIn * (1 - titleOut));
-      target.problemTitleShift = 28 - progress * 58;
-      target.problemTitleScale = 0.975 + progress * 0.035;
-    }
-
-    function applyParallaxState() {
-      const rootStyle = document.documentElement.style;
-      rootStyle.setProperty('--hero-shift', `${current.heroShift.toFixed(2)}px`);
-      rootStyle.setProperty('--hero-scale', current.heroScale.toFixed(4));
-      rootStyle.setProperty('--problem-shift', `${current.problemShift.toFixed(2)}px`);
-      rootStyle.setProperty('--problem-scale', current.problemScale.toFixed(4));
-      rootStyle.setProperty('--problem-tilt', `${current.problemTilt.toFixed(3)}deg`);
-      rootStyle.setProperty('--benefits-shift', `${current.benefitsShift.toFixed(2)}px`);
-      rootStyle.setProperty('--problem-title-opacity', current.problemTitleOpacity.toFixed(3));
-      rootStyle.setProperty('--problem-title-shift', `${current.problemTitleShift.toFixed(2)}px`);
-      rootStyle.setProperty('--problem-title-scale', current.problemTitleScale.toFixed(4));
-      document.documentElement.style.setProperty('--problem-opacity', '1');
-    }
-
-    function renderParallax(time) {
-      const elapsed = time - lastFrameTime;
-      if (elapsed < minFrameMs) {
-        parallaxFrame = requestAnimationFrame(renderParallax);
-        return;
+      function measureParallax() {
+        if (!hero || !problem) return;
+        const viewportH = viewportHeight();
+        problemTop = 0;
+        for (let node = problem; node; node = node.offsetParent) problemTop += node.offsetTop;
+        bridgeStart = viewportH * 0.94;
+        bridgeDistance = Math.max(1, viewportH * 0.96);
       }
-      const delta = Math.min(48, elapsed);
-      lastFrameTime = time;
-      const ease = isCoarsePointer
-        ? 1 - Math.pow(0.002, delta / 1000)
-        : 1 - Math.pow(0.0015, delta / 1000);
-
-      if (pendingParallaxRead) {
-        pendingParallaxRead = false;
-        setParallaxTarget();
+      function setParallaxTarget() {
+        if (!hero || !problem) return;
+        const raw = (bridgeStart - (problemTop - window.scrollY)) / bridgeDistance;
+        const progress = smoothstep(clamp(raw, 0, 1));
+        target.heroShift = progress * -34; target.heroScale = 1 + progress * 0.018;
+        target.problemShift = -68 + progress * 92; target.problemScale = 0.945 + progress * 0.066;
+        target.problemTilt = -2.2 + progress * 2.2; target.benefitsShift = 34 - progress * 34;
+        const titleIn = smoothstep(clamp(progress / 0.28, 0, 1));
+        const titleOut = smoothstep(clamp((progress - 0.99) / 0.01, 0, 1));
+        target.problemTitleOpacity = Math.max(0, titleIn * (1 - titleOut));
+        target.problemTitleShift = 28 - progress * 58; target.problemTitleScale = 0.975 + progress * 0.035;
       }
-
-      current.heroShift += (target.heroShift - current.heroShift) * ease;
-      current.heroScale += (target.heroScale - current.heroScale) * ease;
-      current.problemShift += (target.problemShift - current.problemShift) * ease;
-      current.problemScale += (target.problemScale - current.problemScale) * ease;
-      current.problemTilt += (target.problemTilt - current.problemTilt) * ease;
-      current.benefitsShift += (target.benefitsShift - current.benefitsShift) * ease;
-      current.problemTitleOpacity += (target.problemTitleOpacity - current.problemTitleOpacity) * ease;
-      current.problemTitleShift += (target.problemTitleShift - current.problemTitleShift) * ease;
-      current.problemTitleScale += (target.problemTitleScale - current.problemTitleScale) * ease;
-
-      applyParallaxState();
-
-      const isMoving =
-        Math.abs(target.heroShift - current.heroShift) > 0.02 ||
-        Math.abs(target.heroScale - current.heroScale) > 0.0002 ||
-        Math.abs(target.problemShift - current.problemShift) > 0.02 ||
-        Math.abs(target.problemScale - current.problemScale) > 0.0002 ||
-        Math.abs(target.problemTilt - current.problemTilt) > 0.002 ||
-        Math.abs(target.benefitsShift - current.benefitsShift) > 0.02 ||
-        Math.abs(target.problemTitleOpacity - current.problemTitleOpacity) > 0.002 ||
-        Math.abs(target.problemTitleShift - current.problemTitleShift) > 0.02 ||
-        Math.abs(target.problemTitleScale - current.problemTitleScale) > 0.0002;
-
-      parallaxFrame = isMoving ? requestAnimationFrame(renderParallax) : 0;
-    }
-
-    function requestParallaxUpdate() {
-      document.body.classList.add('is-scrolling');
-      clearTimeout(scrollingTimer);
-      scrollingTimer = setTimeout(() => {
-        document.body.classList.remove('is-scrolling');
-      }, 130);
-      pendingParallaxRead = true;
-      if (parallaxFrame) return;
-      lastFrameTime = performance.now();
-      parallaxFrame = requestAnimationFrame(renderParallax);
-    }
-
-    function refreshParallax() {
-      measureParallax();
-      setParallaxTarget();
-      if (!parallaxFrame) {
-        Object.assign(current, target);
+      function applyParallaxState() {
+        const s = document.documentElement.style;
+        s.setProperty('--hero-shift', `${current.heroShift.toFixed(2)}px`); s.setProperty('--hero-scale', current.heroScale.toFixed(4));
+        s.setProperty('--problem-shift', `${current.problemShift.toFixed(2)}px`); s.setProperty('--problem-scale', current.problemScale.toFixed(4));
+        s.setProperty('--problem-tilt', `${current.problemTilt.toFixed(3)}deg`); s.setProperty('--benefits-shift', `${current.benefitsShift.toFixed(2)}px`);
+        s.setProperty('--problem-title-opacity', current.problemTitleOpacity.toFixed(3)); s.setProperty('--problem-title-shift', `${current.problemTitleShift.toFixed(2)}px`);
+        s.setProperty('--problem-title-scale', current.problemTitleScale.toFixed(4)); s.setProperty('--problem-opacity', '1');
+      }
+      function renderParallax(time) {
+        const delta = Math.min(48, time - lastFrameTime); lastFrameTime = time;
+        const ease = 1 - Math.pow(0.0015, delta / 1000);
+        for (const k of Object.keys(current)) current[k] += (target[k] - current[k]) * ease;
         applyParallaxState();
+        const isMoving = Object.keys(current).some(k => Math.abs(target[k] - current[k]) > 0.002);
+        parallaxFrame = isMoving ? requestAnimationFrame(renderParallax) : 0;
       }
-    }
+      function requestParallaxUpdate() { setParallaxTarget(); if (parallaxFrame) return; lastFrameTime = performance.now(); parallaxFrame = requestAnimationFrame(renderParallax); }
+      function refreshParallax() { measureParallax(); setParallaxTarget(); if (!parallaxFrame) { Object.assign(current, target); applyParallaxState(); } }
+      function requestParallaxRefresh() { if (resizeFrame) return; resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; refreshParallax(); }); }
 
-    function requestParallaxRefresh() {
-      if (resizeFrame) return;
-      resizeFrame = requestAnimationFrame(() => {
-        resizeFrame = 0;
-        refreshParallax();
-      });
-    }
-
-    measureParallax();
-    setParallaxTarget();
-    Object.assign(current, target);
-    applyParallaxState();
-    document.body.classList.add('parallax-enabled');
-    requestParallaxUpdate();
-    window.addEventListener('scroll', requestParallaxUpdate, { passive: true });
-    window.addEventListener('resize', requestParallaxRefresh, { passive: true });
-    window.visualViewport?.addEventListener('resize', requestParallaxRefresh, { passive: true });
-    window.addEventListener('load', requestParallaxRefresh, { passive: true });
-    setTimeout(requestParallaxRefresh, 250);
-    // Reduce layout thrash: re-measure after fonts load
-    if (document.fonts) document.fonts.ready.then(requestParallaxRefresh);
-
-    // Release compositor hints after initial reveal completes.
-    setTimeout(() => {
-      if (released) return;
-      released = true;
-      document.querySelectorAll('.hero-copy, .hero-media, .reveal').forEach((el) => {
-        el.style.willChange = 'auto';
-      });
-    }, 1400);
-
-    window.addEventListener('pagehide', () => {
-      clearTimeout(scrollingTimer);
-      document.body.classList.remove('is-scrolling');
-      if (parallaxFrame) {
-        cancelAnimationFrame(parallaxFrame);
-        parallaxFrame = 0;
-      }
-      if (resizeFrame) {
-        cancelAnimationFrame(resizeFrame);
-        resizeFrame = 0;
-      }
-    });
+      measureParallax(); setParallaxTarget(); Object.assign(current, target); applyParallaxState();
+      document.body.classList.add('parallax-enabled');
+      requestParallaxUpdate();
+      window.addEventListener('scroll', requestParallaxUpdate, { passive: true });
+      window.addEventListener('resize', requestParallaxRefresh);
+      window.visualViewport?.addEventListener('resize', requestParallaxRefresh);
+      window.addEventListener('load', requestParallaxRefresh);
+      setTimeout(requestParallaxRefresh, 250);
+      setTimeout(() => { document.querySelectorAll('.hero-copy, .hero-media, .reveal').forEach((el) => { el.style.willChange = 'auto'; }); }, 1400);
     }
   }
 </script>
