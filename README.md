@@ -26,6 +26,16 @@ Set these in Netlify with `Functions` scope:
 
 - `GOOGLE_SHEETS_SPREADSHEET_ID`
 - `GOOGLE_SHEETS_RANGE`
+
+OAuth option:
+
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI`
+- `GOOGLE_OAUTH_REFRESH_TOKEN`
+
+Service account option:
+
 - `GOOGLE_SERVICE_ACCOUNT_JSON`
 
 Or instead of `GOOGLE_SERVICE_ACCOUNT_JSON`:
@@ -46,6 +56,39 @@ https://docs.netlify.com/build/functions/environment-variables/
 
 The backend appends rows using the Google Sheets `spreadsheets.values.append` API:
 https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append
+
+### OAuth Setup
+
+Use this when the Sheets API should write as your Google user.
+
+1. Enable the Google Sheets API in Google Cloud
+2. Create an OAuth Client ID for a web application
+3. Add this authorized redirect URI:
+
+`https://nexusluma.com/.netlify/functions/google-auth-callback`
+
+4. Set these in Netlify environment variables:
+
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI`
+
+5. Redeploy Netlify
+6. Visit:
+
+`https://nexusluma.com/.netlify/functions/google-auth-start`
+
+7. Approve access and copy the returned refresh token into Netlify as:
+
+- `GOOGLE_OAUTH_REFRESH_TOKEN`
+
+8. Redeploy Netlify again
+
+The client secret and refresh token must stay in Netlify environment variables only. Do not commit them to the repo.
+
+### Service Account Setup
+
+Use this when the Sheets API should write as a Google service account.
 
 Before this works:
 

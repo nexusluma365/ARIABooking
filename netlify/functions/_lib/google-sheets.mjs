@@ -2,7 +2,8 @@ const DEFAULT_RANGE = "Leads!A:O";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
-let cachedToken = null;
+let cachedServiceAccountToken = null;
+let cachedOAuthToken = null;
 
 function base64url(input) {
   const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
@@ -51,8 +52,52 @@ async function signJwt(privateKey, content) {
 }
 
 async function getAccessToken() {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
-    return cachedToken.accessToken;
+  if (process.env.GOOGLE_OAUTH_REFRESH_TOKEN) {
+    return getOAuthAccessToken();
+  }
+
+  return getServiceAccountAccessToken();
+}
+
+async function getOAuthAccessToken() {
+  if (cachedOAuthToken && cachedOAuthToken.expiresAt > Date.now() + 60000) {
+    return cachedOAuthToken.accessToken;
+  }
+
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error("Google OAuth credentials are not fully configured.");
+  }
+
+  const response = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token"
+    })
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error_description || payload.error || "Google OAuth refresh failed.");
+  }
+
+  cachedOAuthToken = {
+    accessToken: payload.access_token,
+    expiresAt: Date.now() + Number(payload.expires_in || 3600) * 1000
+  };
+  return cachedOAuthToken.accessToken;
+}
+
+async function getServiceAccountAccessToken() {
+  if (cachedServiceAccountToken && cachedServiceAccountToken.expiresAt > Date.now() + 60000) {
+    return cachedServiceAccountToken.accessToken;
   }
 
   const account = parseServiceAccount();
@@ -86,11 +131,11 @@ async function getAccessToken() {
     throw new Error(payload.error_description || payload.error || "Google auth failed.");
   }
 
-  cachedToken = {
+  cachedServiceAccountToken = {
     accessToken: payload.access_token,
     expiresAt: Date.now() + Number(payload.expires_in || 3600) * 1000
   };
-  return cachedToken.accessToken;
+  return cachedServiceAccountToken.accessToken;
 }
 
 export async function appendSheetRow(row) {
