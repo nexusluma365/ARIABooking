@@ -6,7 +6,7 @@
  */
 
 var SHEET_ID = '16Lpm5EM2oPkT56ddo6VrQirOHSCU6TJYEF4hIwpQtLM';
-var SHEET_NAME = 'Aria Calls';
+var SHEET_NAME = 'Warm Leads';
 
 var COLUMNS = [
   'sessionId',
@@ -19,6 +19,7 @@ var COLUMNS = [
   'email',
   'phone',
   'appointmentTime',
+  'bookingSlot',
   'availability',
   'bookingIntent',
   'completionPhrase',
@@ -37,17 +38,50 @@ var COLUMNS = [
   'emailStatus'
 ];
 
+var HEADER_ALIASES = {
+  sessionId: ['sessionid', 'session'],
+  eventType: ['eventtype', 'event'],
+  occurredAt: ['occurredat', 'timestamp', 'submittedat', 'createdat'],
+  page: ['page', 'sourcepage'],
+  name: ['name', 'fullname', 'contactname'],
+  businessName: ['businessname', 'business', 'company', 'companyname', 'organization'],
+  location: ['location', 'city', 'area'],
+  email: ['email', 'emailaddress', 'contactemail'],
+  phone: ['phone', 'phonenumber', 'contactphone'],
+  appointmentTime: ['appointmenttime', 'appointment', 'appointmentdate', 'appointmentdatetime'],
+  bookingSlot: ['bookingslot', 'bookedslot', 'confirmedslot', 'confirmedappointment', 'scheduledtime'],
+  availability: ['availability', 'availabletime', 'preferredtime'],
+  bookingIntent: ['bookingintent'],
+  completionPhrase: ['completionphrase'],
+  questionnaireName: ['questionnairename'],
+  questionnaireBusinessType: ['questionnairebusinesstype'],
+  questionnaireService: ['questionnaireservice'],
+  questionnairePain: ['questionnairepain'],
+  questionnaireSpend: ['questionnairespend'],
+  questionnaireChallenge: ['questionnairechallenge'],
+  questionnaireContactProcess: ['questionnairecontactprocess'],
+  questionnaireAiHelp: ['questionnaireaihelp'],
+  questionnaireSystemStatus: ['questionnairesystemstatus'],
+  transcript: ['transcript', 'calltranscript'],
+  updatedAt: ['updatedat', 'lastupdated'],
+  emailSentAt: ['emailsentat', 'confirmationemailsentat'],
+  emailStatus: ['emailstatus', 'confirmationemailstatus']
+};
+
 function doPost(e) {
   try {
     var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var payload = JSON.parse(raw);
 
     var sheet = getOrCreateSheet_();
-    ensureHeaders_(sheet);
+    var headerMap = ensureHeaders_(sheet);
     var normalized = normalizePayload_(payload);
-    var existingRow = findRowBySession_(sheet, normalized.sessionId);
-    var existingEmailSentAt = existingRow > 0 ? toStr_(sheet.getRange(existingRow, COLUMNS.indexOf('emailSentAt') + 1).getValue()) : '';
-    var existingEmailStatus = existingRow > 0 ? toStr_(sheet.getRange(existingRow, COLUMNS.indexOf('emailStatus') + 1).getValue()) : '';
+    var existingRow = findWarmLeadRow_(sheet, headerMap, normalized);
+    if (existingRow > 0) {
+      normalized = mergeExistingWarmLead_(sheet, existingRow, headerMap, normalized);
+    }
+    var existingEmailSentAt = existingRow > 0 ? getCellByKey_(sheet, existingRow, headerMap, 'emailSentAt') : '';
+    var existingEmailStatus = existingRow > 0 ? getCellByKey_(sheet, existingRow, headerMap, 'emailStatus') : '';
     var alreadySent = Boolean(existingEmailSentAt);
 
     if (alreadySent) {
@@ -55,14 +89,13 @@ function doPost(e) {
       normalized.emailStatus = existingEmailStatus || 'sent';
     }
 
-    upsertRow_(sheet, normalized);
+    var targetRow = upsertRow_(sheet, normalized, headerMap, existingRow);
 
     if (shouldSendBookingEmail_(normalized) && !alreadySent) {
       var status = sendBookingEmail_(normalized);
-      var targetRow = findRowBySession_(sheet, normalized.sessionId);
       if (targetRow > 0) {
-        sheet.getRange(targetRow, COLUMNS.indexOf('emailSentAt') + 1).setValue(status.sentAt || '');
-        sheet.getRange(targetRow, COLUMNS.indexOf('emailStatus') + 1).setValue(status.status || '');
+        setCellByKey_(sheet, targetRow, headerMap, 'emailSentAt', status.sentAt || '');
+        setCellByKey_(sheet, targetRow, headerMap, 'emailStatus', status.status || '');
       }
     }
 
@@ -88,9 +121,10 @@ function testBookingConfirmationEmail() {
 }
 
 function normalizePayload_(p) {
+  var completed = String(p.completed).toLowerCase() === 'true' || p.completed === true;
   return {
     sessionId: toStr_(p.sessionId),
-    eventType: toStr_(p.eventType),
+    eventType: toStr_(p.eventType) || (completed ? 'questionnaire-complete' : 'questionnaire-update'),
     occurredAt: toStr_(p.occurredAt) || new Date().toISOString(),
     page: toStr_(p.page),
     name: toStr_(p.name),
@@ -99,18 +133,19 @@ function normalizePayload_(p) {
     email: toStr_(p.email),
     phone: toStr_(p.phone),
     appointmentTime: toStr_(p.appointmentTime),
+    bookingSlot: toStr_(p.bookingSlot || p.appointmentTime || p.availability),
     availability: toStr_(p.availability),
     bookingIntent: toStr_(p.bookingIntent),
     completionPhrase: toStr_(p.completionPhrase),
-    questionnaireName: toStr_(p.questionnaireName),
-    questionnaireBusinessType: toStr_(p.questionnaireBusinessType),
-    questionnaireService: toStr_(p.questionnaireService),
-    questionnairePain: toStr_(p.questionnairePain),
+    questionnaireName: toStr_(p.questionnaireName || p.name),
+    questionnaireBusinessType: toStr_(p.questionnaireBusinessType || p.businessName),
+    questionnaireService: toStr_(p.questionnaireService || p.aiHelp),
+    questionnairePain: toStr_(p.questionnairePain || p.challenge),
     questionnaireSpend: toStr_(p.questionnaireSpend),
-    questionnaireChallenge: toStr_(p.questionnaireChallenge),
-    questionnaireContactProcess: toStr_(p.questionnaireContactProcess),
-    questionnaireAiHelp: toStr_(p.questionnaireAiHelp),
-    questionnaireSystemStatus: toStr_(p.questionnaireSystemStatus),
+    questionnaireChallenge: toStr_(p.questionnaireChallenge || p.challenge),
+    questionnaireContactProcess: toStr_(p.questionnaireContactProcess || p.contactProcess),
+    questionnaireAiHelp: toStr_(p.questionnaireAiHelp || p.aiHelp),
+    questionnaireSystemStatus: toStr_(p.questionnaireSystemStatus || p.systemStatus),
     transcript: toStr_(p.transcript),
     updatedAt: toStr_(p.updatedAt) || new Date().toISOString(),
     emailSentAt: toStr_(p.emailSentAt),
@@ -126,50 +161,117 @@ function getOrCreateSheet_() {
 }
 
 function ensureHeaders_(sheet) {
-  var maxCols = Math.max(sheet.getLastColumn(), COLUMNS.length);
-  var existing = maxCols > 0 ? sheet.getRange(1, 1, 1, maxCols).getValues()[0] : [];
+  if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
+    sheet.getRange(1, 1, 1, COLUMNS.length).setValues([COLUMNS]);
+    styleHeader_(sheet, COLUMNS.length);
+    return buildHeaderMap_(sheet);
+  }
 
-  var rewrite = sheet.getLastRow() === 0;
-  if (!rewrite) {
+  var headerMap = buildHeaderMap_(sheet);
+  var missing = [];
+  for (var i = 0; i < COLUMNS.length; i++) {
+    if (!headerMap[COLUMNS[i]]) missing.push(COLUMNS[i]);
+  }
+
+  if (missing.length) {
+    var startCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+    styleHeader_(sheet, startCol + missing.length - 1);
+    headerMap = buildHeaderMap_(sheet);
+  }
+
+  return headerMap;
+}
+
+function styleHeader_(sheet, width) {
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, width)
+    .setFontWeight('bold')
+    .setBackground('#0b168d')
+    .setFontColor('#ffffff');
+}
+
+function upsertRow_(sheet, payload, headerMap, targetRow) {
+  var row = targetRow > 0 ? targetRow : -1;
+  if (row < 0) {
+    row = sheet.getLastRow() + 1;
+  }
+
+  for (var i = 0; i < COLUMNS.length; i++) {
+    var key = COLUMNS[i];
+    var value = payload[key] || '';
+    if (!value && row <= sheet.getLastRow()) {
+      value = getCellByKey_(sheet, row, headerMap, key);
+    }
+    setCellByKey_(sheet, row, headerMap, key, value);
+  }
+
+  return row;
+}
+
+function mergeExistingWarmLead_(sheet, row, headerMap, payload) {
+  for (var i = 0; i < COLUMNS.length; i++) {
+    var key = COLUMNS[i];
+    if (!payload[key]) {
+      payload[key] = getCellByKey_(sheet, row, headerMap, key);
+    }
+  }
+
+  if (!payload.bookingSlot) {
+    payload.bookingSlot = payload.appointmentTime || payload.availability || '';
+  }
+
+  return payload;
+}
+
+function buildHeaderMap_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  var headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  var map = {};
+
+  for (var col = 0; col < headers.length; col++) {
+    var normalizedHeader = normalizeHeader_(headers[col]);
     for (var i = 0; i < COLUMNS.length; i++) {
-      if (existing[i] !== COLUMNS[i]) {
-        rewrite = true;
-        break;
+      var key = COLUMNS[i];
+      if (!map[key] && headerMatchesKey_(normalizedHeader, key)) {
+        map[key] = col + 1;
       }
     }
   }
 
-  if (rewrite) {
-    sheet.getRange(1, 1, 1, COLUMNS.length).setValues([COLUMNS]);
-    sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, COLUMNS.length)
-      .setFontWeight('bold')
-      .setBackground('#0b168d')
-      .setFontColor('#ffffff');
-  }
+  return map;
 }
 
-function upsertRow_(sheet, payload) {
-  var row = COLUMNS.map(function (k) { return payload[k] || ''; });
-
-  if (!payload.sessionId) {
-    sheet.appendRow(row);
-    return;
+function headerMatchesKey_(normalizedHeader, key) {
+  if (!normalizedHeader) return false;
+  if (normalizedHeader === normalizeHeader_(key)) return true;
+  var aliases = HEADER_ALIASES[key] || [];
+  for (var i = 0; i < aliases.length; i++) {
+    if (normalizedHeader === aliases[i]) return true;
   }
+  return false;
+}
 
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    sheet.appendRow(row);
-    return;
-  }
+function normalizeHeader_(value) {
+  return toStr_(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 
-  var target = findRowBySession_(sheet, payload.sessionId);
+function getCellByKey_(sheet, row, headerMap, key) {
+  var col = headerMap[key];
+  if (!col || row < 1) return '';
+  return toStr_(sheet.getRange(row, col).getValue());
+}
 
-  if (target > 0) {
-    sheet.getRange(target, 1, 1, COLUMNS.length).setValues([row]);
-  } else {
-    sheet.appendRow(row);
-  }
+function setCellByKey_(sheet, row, headerMap, key, value) {
+  var col = headerMap[key];
+  if (!col || row < 1) return;
+  sheet.getRange(row, col).setValue(value || '');
+}
+
+function findWarmLeadRow_(sheet, headerMap, payload) {
+  var bySession = findRowByKeyValue_(sheet, headerMap, 'sessionId', payload.sessionId);
+  if (bySession > 0) return bySession;
+  return findRowByKeyValue_(sheet, headerMap, 'email', payload.email);
 }
 
 function findRowBySession_(sheet, sessionId) {
@@ -179,6 +281,21 @@ function findRowBySession_(sheet, sessionId) {
   var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
   for (var i = 0; i < ids.length; i++) {
     if (String(ids[i][0]) === String(sessionId)) return i + 2;
+  }
+  return -1;
+}
+
+function findRowByKeyValue_(sheet, headerMap, key, value) {
+  value = toStr_(value);
+  var col = headerMap[key];
+  var lastRow = sheet.getLastRow();
+  if (!value || !col || lastRow < 2) return -1;
+  var values = sheet.getRange(2, col, lastRow - 1, 1).getValues();
+  var needle = key === 'email' ? value.toLowerCase() : value;
+  for (var i = 0; i < values.length; i++) {
+    var haystack = toStr_(values[i][0]);
+    if (key === 'email') haystack = haystack.toLowerCase();
+    if (haystack === needle) return i + 2;
   }
   return -1;
 }
