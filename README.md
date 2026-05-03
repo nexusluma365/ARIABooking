@@ -144,9 +144,9 @@ Notes:
 
 ## Booking Confirmation Email
 
-The Google Apps Script webhook in [`aria-google-sheets-sync.gs`](./aria-google-sheets-sync.gs) writes questionnaire and ARIA call updates into the `Warm Leads` sheet tab. It first matches an existing row by `sessionId`, then by email, so the email captured in the questionnaire is reused when ARIA books the appointment.
+The Google Apps Script webhook in [`aria-google-sheets-sync.gs`](./aria-google-sheets-sync.gs) writes questionnaire and ARIA call updates into the `Warm Leads` sheet tab. The sheet script uses a 14-column schema: questionnaire answers own the lead fields, and ARIA only updates the booked appointment slot plus confirmation email status.
 
-When ARIA posts a `completion` event with an email address and appointment time, the script stores the appointment in `bookingSlot` on the same `Warm Leads` row and sends a branded confirmation email.
+When ARIA posts a `completion` event, the script finds the current session row, reads the email captured by the questionnaire, stores ARIA's appointment in `bookingSlot`, and sends a branded confirmation email to that saved email address.
 
 - Subject: `Nexus Luma`
 - Headline: `Your Appointment Has Been Booked!`

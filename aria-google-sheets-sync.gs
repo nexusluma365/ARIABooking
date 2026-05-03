@@ -1,5 +1,5 @@
 /**
- * ARIA Voice Call -> Google Sheets live sync
+ * Nexus Luma questionnaire + ARIA booking sync
  * Deploy as Web App:
  * - Execute as: Me
  * - Who has access: Anyone
@@ -10,96 +10,55 @@ var SHEET_NAME = 'Warm Leads';
 
 var COLUMNS = [
   'sessionId',
-  'eventType',
-  'occurredAt',
-  'page',
+  'submittedAt',
   'name',
   'businessName',
-  'location',
   'email',
-  'phone',
-  'appointmentTime',
+  'challenge',
+  'contactProcess',
+  'aiHelp',
+  'systemStatus',
+  'questionnaireCompleted',
   'bookingSlot',
-  'availability',
-  'bookingIntent',
-  'completionPhrase',
-  'questionnaireName',
-  'questionnaireBusinessType',
-  'questionnaireService',
-  'questionnairePain',
-  'questionnaireSpend',
-  'questionnaireChallenge',
-  'questionnaireContactProcess',
-  'questionnaireAiHelp',
-  'questionnaireSystemStatus',
-  'transcript',
-  'updatedAt',
-  'emailSentAt',
-  'emailStatus'
+  'bookingConfirmedAt',
+  'confirmationEmailSentAt',
+  'confirmationEmailStatus'
 ];
 
 var HEADER_ALIASES = {
   sessionId: ['sessionid', 'session'],
-  eventType: ['eventtype', 'event'],
-  occurredAt: ['occurredat', 'timestamp', 'submittedat', 'createdat'],
-  page: ['page', 'sourcepage'],
-  name: ['name', 'fullname', 'contactname'],
-  businessName: ['businessname', 'business', 'company', 'companyname', 'organization'],
-  location: ['location', 'city', 'area'],
+  submittedAt: ['submittedat', 'occurredat', 'createdat', 'timestamp', 'updatedat'],
+  name: ['name', 'fullname', 'contactname', 'questionnairename'],
+  businessName: ['businessname', 'business', 'company', 'companyname', 'organization', 'questionnairebusinesstype'],
   email: ['email', 'emailaddress', 'contactemail'],
-  phone: ['phone', 'phonenumber', 'contactphone'],
-  appointmentTime: ['appointmenttime', 'appointment', 'appointmentdate', 'appointmentdatetime'],
-  bookingSlot: ['bookingslot', 'bookedslot', 'confirmedslot', 'confirmedappointment', 'scheduledtime'],
-  availability: ['availability', 'availabletime', 'preferredtime'],
-  bookingIntent: ['bookingintent'],
-  completionPhrase: ['completionphrase'],
-  questionnaireName: ['questionnairename'],
-  questionnaireBusinessType: ['questionnairebusinesstype'],
-  questionnaireService: ['questionnaireservice'],
-  questionnairePain: ['questionnairepain'],
-  questionnaireSpend: ['questionnairespend'],
-  questionnaireChallenge: ['questionnairechallenge'],
-  questionnaireContactProcess: ['questionnairecontactprocess'],
-  questionnaireAiHelp: ['questionnaireaihelp'],
-  questionnaireSystemStatus: ['questionnairesystemstatus'],
-  transcript: ['transcript', 'calltranscript'],
-  updatedAt: ['updatedat', 'lastupdated'],
-  emailSentAt: ['emailsentat', 'confirmationemailsentat'],
-  emailStatus: ['emailstatus', 'confirmationemailstatus']
+  challenge: ['challenge', 'questionnairechallenge', 'questionnairepain'],
+  contactProcess: ['contactprocess', 'questionnairecontactprocess'],
+  aiHelp: ['aihelp', 'questionnaireaihelp', 'questionnaireservice'],
+  systemStatus: ['systemstatus', 'questionnairesystemstatus'],
+  questionnaireCompleted: ['questionnairecompleted', 'completed'],
+  bookingSlot: ['bookingslot', 'appointmenttime', 'appointment', 'availability', 'confirmedslot', 'scheduledtime'],
+  bookingConfirmedAt: ['bookingconfirmedat'],
+  confirmationEmailSentAt: ['confirmationemailsentat', 'emailsentat'],
+  confirmationEmailStatus: ['confirmationemailstatus', 'emailstatus']
 };
 
 function doPost(e) {
   try {
     var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var payload = JSON.parse(raw);
-
     var sheet = getOrCreateSheet_();
     var headerMap = ensureHeaders_(sheet);
-    var normalized = normalizePayload_(payload);
-    var existingRow = findWarmLeadRow_(sheet, headerMap, normalized);
-    if (existingRow > 0) {
-      normalized = mergeExistingWarmLead_(sheet, existingRow, headerMap, normalized);
-    }
-    var existingEmailSentAt = existingRow > 0 ? getCellByKey_(sheet, existingRow, headerMap, 'emailSentAt') : '';
-    var existingEmailStatus = existingRow > 0 ? getCellByKey_(sheet, existingRow, headerMap, 'emailStatus') : '';
-    var alreadySent = Boolean(existingEmailSentAt);
+    var existingRow = findWarmLeadRow_(sheet, headerMap, payload);
+    var isAria = isAriaPayload_(payload);
+    var targetRow;
 
-    if (alreadySent) {
-      normalized.emailSentAt = existingEmailSentAt;
-      normalized.emailStatus = existingEmailStatus || 'sent';
+    if (isAria) {
+      targetRow = handleAriaBooking_(sheet, headerMap, existingRow, payload);
+    } else {
+      targetRow = handleQuestionnaire_(sheet, headerMap, existingRow, payload);
     }
 
-    var targetRow = upsertRow_(sheet, normalized, headerMap, existingRow);
-
-    if (shouldSendBookingEmail_(normalized) && !alreadySent) {
-      var status = sendBookingEmail_(normalized);
-      if (targetRow > 0) {
-        setCellByKey_(sheet, targetRow, headerMap, 'emailSentAt', status.sentAt || '');
-        setCellByKey_(sheet, targetRow, headerMap, 'emailStatus', status.status || '');
-      }
-    }
-
-    return json_({ status: 'ok' });
+    return json_({ status: 'ok', row: targetRow, mode: isAria ? 'aria-booking' : 'questionnaire' });
   } catch (err) {
     Logger.log('doPost error: ' + err.message + '\n' + err.stack);
     return json_({ status: 'error', message: err.message });
@@ -114,43 +73,71 @@ function testBookingConfirmationEmail() {
   var status = sendBookingEmail_({
     name: 'Test User',
     email: Session.getActiveUser().getEmail(),
-    appointmentTime: 'tomorrow at 10:00 AM'
+    bookingSlot: 'tomorrow at 10:00 AM'
   });
   Logger.log(JSON.stringify(status));
   return status;
 }
 
-function normalizePayload_(p) {
-  var completed = String(p.completed).toLowerCase() === 'true' || p.completed === true;
-  return {
-    sessionId: toStr_(p.sessionId),
-    eventType: toStr_(p.eventType) || (completed ? 'questionnaire-complete' : 'questionnaire-update'),
-    occurredAt: toStr_(p.occurredAt) || new Date().toISOString(),
-    page: toStr_(p.page),
-    name: toStr_(p.name),
-    businessName: toStr_(p.businessName),
-    location: toStr_(p.location),
-    email: toStr_(p.email),
-    phone: toStr_(p.phone),
-    appointmentTime: toStr_(p.appointmentTime),
-    bookingSlot: toStr_(p.bookingSlot || p.appointmentTime || p.availability),
-    availability: toStr_(p.availability),
-    bookingIntent: toStr_(p.bookingIntent),
-    completionPhrase: toStr_(p.completionPhrase),
-    questionnaireName: toStr_(p.questionnaireName || p.name),
-    questionnaireBusinessType: toStr_(p.questionnaireBusinessType || p.businessName),
-    questionnaireService: toStr_(p.questionnaireService || p.aiHelp),
-    questionnairePain: toStr_(p.questionnairePain || p.challenge),
-    questionnaireSpend: toStr_(p.questionnaireSpend),
-    questionnaireChallenge: toStr_(p.questionnaireChallenge || p.challenge),
-    questionnaireContactProcess: toStr_(p.questionnaireContactProcess || p.contactProcess),
-    questionnaireAiHelp: toStr_(p.questionnaireAiHelp || p.aiHelp),
-    questionnaireSystemStatus: toStr_(p.questionnaireSystemStatus || p.systemStatus),
-    transcript: toStr_(p.transcript),
-    updatedAt: toStr_(p.updatedAt) || new Date().toISOString(),
-    emailSentAt: toStr_(p.emailSentAt),
-    emailStatus: toStr_(p.emailStatus)
-  };
+function handleQuestionnaire_(sheet, headerMap, existingRow, payload) {
+  var row = existingRow > 0 ? existingRow : sheet.getLastRow() + 1;
+  var completed = String(payload.completed).toLowerCase() === 'true' || payload.completed === true;
+  var submittedAt = getCellByKey_(sheet, row, headerMap, 'submittedAt') || toStr_(payload.updatedAt) || new Date().toISOString();
+
+  setCellByKey_(sheet, row, headerMap, 'sessionId', toStr_(payload.sessionId));
+  setCellByKey_(sheet, row, headerMap, 'submittedAt', submittedAt);
+  setCellByKey_(sheet, row, headerMap, 'name', toStr_(payload.name));
+  setCellByKey_(sheet, row, headerMap, 'businessName', toStr_(payload.businessName));
+  setCellByKey_(sheet, row, headerMap, 'email', toStr_(payload.email).toLowerCase());
+  setCellByKey_(sheet, row, headerMap, 'challenge', toStr_(payload.challenge));
+  setCellByKey_(sheet, row, headerMap, 'contactProcess', toStr_(payload.contactProcess));
+  setCellByKey_(sheet, row, headerMap, 'aiHelp', toStr_(payload.aiHelp));
+  setCellByKey_(sheet, row, headerMap, 'systemStatus', toStr_(payload.systemStatus));
+  setCellByKey_(sheet, row, headerMap, 'questionnaireCompleted', completed ? 'Yes' : getCellByKey_(sheet, row, headerMap, 'questionnaireCompleted'));
+
+  return row;
+}
+
+function handleAriaBooking_(sheet, headerMap, existingRow, payload) {
+  var row = existingRow > 0 ? existingRow : sheet.getLastRow() + 1;
+  var bookingSlot = extractBookingSlot_(payload);
+  var existingEmailSentAt = getCellByKey_(sheet, row, headerMap, 'confirmationEmailSentAt');
+  var email = getCellByKey_(sheet, row, headerMap, 'email');
+  var name = getCellByKey_(sheet, row, headerMap, 'name');
+
+  if (!getCellByKey_(sheet, row, headerMap, 'sessionId')) {
+    setCellByKey_(sheet, row, headerMap, 'sessionId', toStr_(payload.sessionId));
+  }
+
+  if (bookingSlot) {
+    setCellByKey_(sheet, row, headerMap, 'bookingSlot', bookingSlot);
+    setCellByKey_(sheet, row, headerMap, 'bookingConfirmedAt', new Date().toISOString());
+  }
+
+  if (!email) {
+    setCellByKey_(sheet, row, headerMap, 'confirmationEmailStatus', 'missing questionnaire email');
+    return row;
+  }
+
+  if (String(payload.eventType).toLowerCase() === 'completion' && !existingEmailSentAt) {
+    var status = sendBookingEmail_({
+      name: name,
+      email: email,
+      bookingSlot: bookingSlot || getCellByKey_(sheet, row, headerMap, 'bookingSlot')
+    });
+    setCellByKey_(sheet, row, headerMap, 'confirmationEmailSentAt', status.sentAt || '');
+    setCellByKey_(sheet, row, headerMap, 'confirmationEmailStatus', status.status || '');
+  }
+
+  return row;
+}
+
+function isAriaPayload_(payload) {
+  return Boolean(payload.eventType);
+}
+
+function extractBookingSlot_(payload) {
+  return toStr_(payload.bookingSlot || payload.appointmentTime || payload.availability);
 }
 
 function getOrCreateSheet_() {
@@ -191,39 +178,6 @@ function styleHeader_(sheet, width) {
     .setFontColor('#ffffff');
 }
 
-function upsertRow_(sheet, payload, headerMap, targetRow) {
-  var row = targetRow > 0 ? targetRow : -1;
-  if (row < 0) {
-    row = sheet.getLastRow() + 1;
-  }
-
-  for (var i = 0; i < COLUMNS.length; i++) {
-    var key = COLUMNS[i];
-    var value = payload[key] || '';
-    if (!value && row <= sheet.getLastRow()) {
-      value = getCellByKey_(sheet, row, headerMap, key);
-    }
-    setCellByKey_(sheet, row, headerMap, key, value);
-  }
-
-  return row;
-}
-
-function mergeExistingWarmLead_(sheet, row, headerMap, payload) {
-  for (var i = 0; i < COLUMNS.length; i++) {
-    var key = COLUMNS[i];
-    if (!payload[key]) {
-      payload[key] = getCellByKey_(sheet, row, headerMap, key);
-    }
-  }
-
-  if (!payload.bookingSlot) {
-    payload.bookingSlot = payload.appointmentTime || payload.availability || '';
-  }
-
-  return payload;
-}
-
 function buildHeaderMap_(sheet) {
   var lastCol = sheet.getLastColumn();
   var headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
@@ -258,7 +212,7 @@ function normalizeHeader_(value) {
 
 function getCellByKey_(sheet, row, headerMap, key) {
   var col = headerMap[key];
-  if (!col || row < 1) return '';
+  if (!col || row < 1 || row > sheet.getMaxRows()) return '';
   return toStr_(sheet.getRange(row, col).getValue());
 }
 
@@ -272,17 +226,6 @@ function findWarmLeadRow_(sheet, headerMap, payload) {
   var bySession = findRowByKeyValue_(sheet, headerMap, 'sessionId', payload.sessionId);
   if (bySession > 0) return bySession;
   return findRowByKeyValue_(sheet, headerMap, 'email', payload.email);
-}
-
-function findRowBySession_(sheet, sessionId) {
-  if (!sessionId) return -1;
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return -1;
-  var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (var i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]) === String(sessionId)) return i + 2;
-  }
-  return -1;
 }
 
 function findRowByKeyValue_(sheet, headerMap, key, value) {
@@ -300,14 +243,9 @@ function findRowByKeyValue_(sheet, headerMap, key, value) {
   return -1;
 }
 
-function shouldSendBookingEmail_(payload) {
-  return String(payload.eventType).toLowerCase() === 'completion'
-    && payload.email;
-}
-
 function sendBookingEmail_(payload) {
   try {
-    var appointment = payload.appointmentTime || payload.availability || 'the time confirmed with ARIA';
+    var appointment = payload.bookingSlot || 'the time confirmed with ARIA';
     var firstName = firstName_(payload.name);
     var subject = 'Nexus Luma';
     var htmlBody = buildBookingEmailHtml_(firstName, appointment);
@@ -359,7 +297,7 @@ function buildBookingEmailHtml_(firstName, appointment) {
     '</div>',
     '</td></tr>',
     '<tr><td style="padding:22px 34px 34px;">',
-    '<p style="margin:0 0 14px;color:#344273;font-size:15px;line-height:1.65;">We have your appointment details saved. ARIA has captured the information needed for the next step, and Nexus Luma will use it to prepare a focused strategy conversation.</p>',
+    '<p style="margin:0 0 14px;color:#344273;font-size:15px;line-height:1.65;">We have your appointment details saved. ARIA has captured the confirmed booking time and Nexus Luma will use it to prepare your strategy conversation.</p>',
     '<p style="margin:0;color:#6b7394;font-size:13px;line-height:1.55;">If anything needs to change, reply to this email and we will help update it.</p>',
     '</td></tr>',
     '<tr><td style="padding:18px 34px;background:#07189f;color:#ffffff;">',
@@ -388,8 +326,8 @@ function escapeHtml_(value) {
     .replace(/'/g, '&#39;');
 }
 
-function toStr_(v) {
-  return (v === undefined || v === null) ? '' : String(v).trim();
+function toStr_(value) {
+  return (value === undefined || value === null) ? '' : String(value).trim();
 }
 
 function json_(obj) {
