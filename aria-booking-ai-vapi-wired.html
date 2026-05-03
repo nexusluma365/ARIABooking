@@ -1373,7 +1373,7 @@ START: Greet them warmly and ask their name. Nothing else yet.`
     if (finishing) return;
     finishing=true; bookingLead.completionPhrase=true;
     if (isStorageAvailable()) { try { localStorage.setItem('ariaBookingLead', JSON.stringify(bookingLead)); } catch(_) {} }
-    syncToSheets('completion');
+    syncToSheets('completion', { keepalive: true, preferBeacon: true });
     setHintMessage('All set \u2014 taking you to the next step\u2026');
     if (!document.body.classList.contains('speaking')) scheduleCompletionRedirect('completion-phrase');
   }

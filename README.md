@@ -99,6 +99,16 @@ Notes:
 - `vapi-webhook.mjs` appends to Sheets on `end-of-call-report`
 - `lead-sync.mjs` is a browser-origin fallback that posts the captured session/transcript snapshot to Netlify on completion
 
+## Booking Confirmation Email
+
+The Google Apps Script webhook in [`aria-google-sheets-sync.gs`](./aria-google-sheets-sync.gs) sends a branded confirmation email when ARIA posts a `completion` event with an email address and appointment time.
+
+- Subject: `Nexus Luma`
+- Headline: `Your Appointment Has Been Booked!`
+- Email body includes: `Thank you for booking with ARIA by Nexus Luma` and the confirmed appointment
+
+After changing this file, redeploy the Apps Script Web App so the live webhook uses the latest email sender. The script records `emailSentAt` and `emailStatus` in the sheet to avoid duplicate sends for the same session.
+
 ## Local Preview
 
 Run any static server from the repo root, for example:
