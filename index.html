@@ -473,23 +473,27 @@
 
   requestAnimationFrame(() => { document.body.classList.add('page-loaded'); });
 
-  // VIDEO — plays on all devices; click toggles audio
+  // Video plays on all devices; click toggles audio.
   document.querySelectorAll('.video-wrap').forEach((wrap) => {
     const video = wrap.querySelector('.aria-video');
     if (!video) return;
 
-    const syncAudioState = () => { wrap.classList.toggle('audio-on', !video.muted); };
+    const syncAudioState = () => {
+      wrap.classList.toggle('audio-on', !video.muted);
+    };
+
+    const ensureVideoLoaded = () => {
+      if (!video.src && video.dataset.src) video.src = video.dataset.src;
+    };
 
     video.muted = true;
+    ensureVideoLoaded();
     syncAudioState();
 
-    // Load from data-src if src not set directly
-    if (!video.src && video.dataset.src) video.src = video.dataset.src;
-
-    // Autoplay on all devices — silently ignore if browser blocks
     video.play().catch(() => {});
 
     wrap.addEventListener('click', () => {
+      ensureVideoLoaded();
       video.muted = !video.muted;
       if (!video.paused) { syncAudioState(); return; }
       video.play().finally(syncAudioState).catch(syncAudioState);
