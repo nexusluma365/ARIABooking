@@ -77,6 +77,16 @@ function doGet() {
   return json_({ status: 'ok', mode: 'GET' });
 }
 
+function testBookingConfirmationEmail() {
+  var status = sendBookingEmail_({
+    name: 'Test User',
+    email: Session.getActiveUser().getEmail(),
+    appointmentTime: 'tomorrow at 10:00 AM'
+  });
+  Logger.log(JSON.stringify(status));
+  return status;
+}
+
 function normalizePayload_(p) {
   return {
     sessionId: toStr_(p.sessionId),
